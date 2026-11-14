@@ -1,6 +1,6 @@
 # 깨비
 
-졸리다고 말하면 가장 가까운 졸음쉼터로 안내하고, 도착하면 차를 잠자리로 바꿔 20분 재운 뒤 깨워 주는 Pleos Connect 차량용 앱입니다.
+“졸려” 한마디에 검색 없이 가장 가까운 졸음쉼터로 안내하고 도착까지 말을 걸어 주며, 주차하면 차를 잠자리로 바꿔 재우고 깨워서 원래 가던 길로 이어 주는 Pleos Connect 차량용 앱입니다.
 
 2026 현대자동차그룹 차량용 앱 개발 공모전 출품작입니다.
 
@@ -10,13 +10,15 @@
 
 Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니다. 화면 전체가 three.js로 그린 차량 장면이고, 부품마다 조절 상태가 실시간으로 표시됩니다.
 
-| 졸음 호출 | 쉼터 안내와 동행 |
+| 말 한마디로 시작 | 가장 가까운 쉼터로 |
 |---|---|
 | ![졸음 호출](docs/app/1-drowsy-start.png) | ![쉼터 안내](docs/app/2-guiding.png) |
-| 도착 | 한 번의 동의 |
+| 도착하면 알아서 | 동의 한 번 |
 | ![도착](docs/app/3-arrived.png) | ![동의](docs/app/4-consent.png) |
-| 실시간 조절 | 기상과 복원 |
-| ![실시간 조절](docs/app/5-preparing.png) | ![복원](docs/app/6-restored.png) |
+| 조절되는 과정이 보인다 | 20분 휴식 |
+| ![실시간 조절](docs/app/5-preparing.png) | ![휴식](docs/app/6-resting.png) |
+| 원래대로, 원래 가던 길로 | 홈 |
+| ![복원](docs/app/7-restored.png) | ![홈](docs/app/8-home.png) |
 
 에뮬레이터 위치를 경부선 죽암 졸음쉼터 2km 앞으로 두고 실행했습니다. 에뮬레이터 차량은 P단 고정이라 주행 화면은 없습니다.
 
@@ -27,7 +29,7 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 
 ## 실행 방법
 
-APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.13.0 (15), 패키지 `ai.kkaebi.app.contest`.
+APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.14.0 (16), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
 adb -s <기기 시리얼> install -r apk/kkaebi_release.apk
@@ -97,6 +99,7 @@ release 빌드에는 서명 키가 필요합니다. 키는 저장소에 넣지 �
 | 기상 뒤 복원 | 변경한 7개 항목 모두 원래 값 확인 |
 | 원래 경로 복귀 | 구현. 에뮬레이터에 목적지가 없어 "목적지 없음" 분기까지만 확인 |
 | 주행 중 동행(음성), 주행 중 환기 | 구현. 음성 출력과 시트 통풍 확인. 에뮬레이터가 P단 고정이라 주행 상태는 미확인 |
+| 잘 때 듣는 소리 | 구현. 빗소리·물소리·파도·명상 음을 앱이 합성(외부 음원 없음). 설정에서 선택 확인 |
 | Gleo AI 호출 | 스키마와 Intent 처리 구현. 실제 발화 인식 미확인 |
 
 ## 라이선스

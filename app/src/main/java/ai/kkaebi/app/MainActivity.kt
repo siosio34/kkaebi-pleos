@@ -124,7 +124,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) receiveExternalIntent(intent)
         alarms = RestAlarmController(this)
-        restSound = RestSoundPlayer(this)
+        restSound = RestSoundPlayer(this).also { it.kind = getPreferences(MODE_PRIVATE).getString("restSoundKind", "rain") ?: "rain" }
         alarms.channels()
         gateway = RestVehicleGateway(this)
         val areas: List<RestArea> = runCatching { Gson().fromJson<List<RestArea>>(
@@ -282,7 +282,7 @@ class MainActivity : ComponentActivity() {
             .put("proactiveCheckinsAvailable", false)
             .put("checkinMessage", "통화·내비 음성 상황을 확인할 수 없어 요청할 때만 대화합니다")
             .put("gleoStatus", "스키마 포함 · 공식 등록·검토 대기 · 외부 호출은 준비 화면만 허용")
-            .put("restSoundAvailable", true).put("restSoundPlaying", restSound.playing).put("restSoundMessage", restSound.message)
+            .put("restSoundAvailable", true).put("restSoundKind", restSound.kind).put("restSoundPlaying", restSound.playing).put("restSoundMessage", restSound.message)
             .put("alarmActionMessage", alarmActionMessage)
         val alarm = alarms.json()
         alarm.keys().forEach { key -> state.put(key, alarm.get(key)) }
@@ -526,6 +526,7 @@ class MainActivity : ComponentActivity() {
                         publish()
                     }
                     "requestAlarmPermission" -> requestAlarmPermission()
+                    "restSoundKind" -> { val k = data.optString("kind"); if (k in setOf("rain", "stream", "waves", "tone")) { restSound.kind = k; getPreferences(MODE_PRIVATE).edit().putString("restSoundKind", k).apply(); if (restSound.playing) restSound.start() }; publish() }
                     "restSound" -> {
                         if(data.optBoolean("enabled") && gateway.parked() && alarms.snapshot().state == "scheduled") restSound.start()
                         else restSound.stop()
