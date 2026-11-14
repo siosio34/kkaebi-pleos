@@ -16,7 +16,7 @@
       const t = driving ? 22 + (options.motion ? (now / 1000) % 16 : 0) : 70;
       const k = look.drive;
       const cam = PARKED.map((v, i) => lerp(lerp(v, RESTING[i], look.resting), DRIVING[i], k));
-      scene.update(t, values, {still: !options.motion, studio: {camera: cam, reveal: driving ? 0 : 1 - look.drive, resting: look.resting, warm: look.warm, route: look.route, shift: innerWidth > 520 ? (document.body.dataset.routine === 'true' ? 0.24 : 0.15) : 0}});
+      scene.update(t, values, {still: !options.motion, studio: {camera: cam, reveal: driving ? 0 : 1 - look.drive, resting: look.resting, warm: look.warm, route: look.route, shift: innerWidth > 520 ? 0.15 : 0}});
       if (root.kkaebiLayoutStage) root.kkaebiLayoutStage(scene.project);
     }
     function tick(now) {

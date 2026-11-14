@@ -76,6 +76,11 @@ class RestParallelExecutorTest {
         assertEquals(listOf("blind", "seatRecline"), plan.lanes[0].map { it.key })
         assertEquals(3, plan.lanes.size)
     }
+    @Test fun windowRunsAfterBlindAndRestoresBeforeOtherMotors() {
+        val targets = full + ("window" to 0.0)
+        assertEquals(listOf("seatRecline", "blind", "window"), RestParallelPlan.create(targets).lanes[0].map { it.key })
+        assertEquals(listOf("window", "blind", "seatRecline"), RestParallelPlan.create(targets, restoring = true).lanes[0].map { it.key })
+    }
     @Test fun blockedMetadataIsTerminalWithoutInventingActualValue() {
         val plan = RestParallelPlan.create(full)
         val s = RestControlOperation().begin("apply", "op").enqueue("op", full.map { it.key to it.value }, plan)

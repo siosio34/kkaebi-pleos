@@ -68,8 +68,8 @@ class RestVehicleGateway(context: Context) {
     private val capabilityLock = Mutex()
     private val stateLock = Any()
     private var controlObserver: () -> Unit = {}
-    private val automaticKeys = listOf("temperature", "fan", "brightness", "seatVentilation", "hvacPower", "seatRecline", "blind")
-    private val manualKeys = listOf("windowClose", "seatHeating", "smartGlass")
+    private val automaticKeys = listOf("temperature", "fan", "brightness", "seatVentilation", "hvacPower", "seatRecline", "blind", "window")
+    private val manualKeys = listOf("seatHeating", "smartGlass")
     private var capabilities = (automaticKeys + manualKeys).associateWith {
         RestControlCapability(automatic = it in automaticKeys,
             message = if (it in manualKeys) "SDK API 존재 · 차량 지원 미확인 · 직접 조작 필요" else "차량 지원 범위 확인 대기")
@@ -115,8 +115,8 @@ class RestVehicleGateway(context: Context) {
                 .put("scope", c.area?.scope ?: "unknown").put("areaId", c.area?.id ?: JSONObject.NULL)
                 .put("areas", JSONArray(c.area?.names ?: emptyList<String>()))
                 .put("requiresCabinConsent", c.area?.scope == "cabin")
-                .put("requiresMotionConsent", key in setOf("seatRecline", "blind"))
-                .put("unit", when(key) { "temperature" -> "celsius"; "hvacPower" -> "boolean"; "seatRecline", "blind" -> "position"; else -> "level" })) }
+                .put("requiresMotionConsent", key in setOf("seatRecline", "blind", "window"))
+                .put("unit", when(key) { "temperature" -> "celsius"; "hvacPower" -> "boolean"; "seatRecline", "blind", "window" -> "position"; else -> "level" })) }
         }
     }
 
@@ -228,15 +228,21 @@ class RestVehicleGateway(context: Context) {
         val saved = original ?: before
         try {
             check(foreground && connected && !closed) { "차량 연결 또는 화면 상태 변경" }
-            if (key == "window") withTimeout(2000) { suspendCancellableCoroutine<Unit> { c ->
+            val dispatched = runCatching { if (key == "window") withTimeout(2000) { suspendCancellableCoroutine<Unit> { c ->
                 vehicle.getWindow().setWindowPosition(windowArea(area), desired.toInt(), { returnedArea, returned ->
                     if (c.isActive) {
                         if (returnedArea == windowArea(area) && returned == desired.toInt()) c.resume(Unit)
                         else c.resumeWithException(IllegalStateException("창문 응답 불일치"))
                     }
                 }, { if (c.isActive) c.resumeWithException(it) })
-            } } else setDrowsyValue(key, desired, area)
-            val actual = if (key == "window") readWindow(area) else getValue(key, area)
+            } } else setDrowsyValue(key, desired, area) }
+            var actual = Double.NaN
+            repeat(8) { attempt ->
+                actual = runCatching { if (key == "window") readWindow(area) else getValue(key, area) }.getOrDefault(Double.NaN)
+                Log.i("KkaebiControl", "drowsy key=$key readback attempt=$attempt observed=$actual target=$desired write=${dispatched.exceptionOrNull()?.message}")
+                if (RestSafety.shouldRestore(actual, desired)) return@withLock DrowsyWriteResult("applied", actual, saved)
+                if (attempt < 7) delay(250)
+            }
             DrowsyWriteResult(if (abs(actual - desired) <= 0.05) "applied" else "failed", actual, saved)
         } catch (_: Exception) {
             val actual = runCatching { if (key == "window") readWindow(area) else getValue(key, area) }.getOrNull()
@@ -303,8 +309,14 @@ class RestVehicleGateway(context: Context) {
                                 ok(RestSafety.capability(config?.accessType?.name ?: "UNKNOWN", area != null,
                                     0.0, 1.0, 1.0, 0.0, System.currentTimeMillis()).copy(area = area?.let(::describe)))
                             }, fail)
-                        "windowClose" -> vehicle.getWindow().checkWindowPositionCapabilities(
-                            { config, areas -> ok(manualCapability(config, !areas.isNullOrEmpty(), "창문 닫힘·장애물 대응 검증 전 직접 조작")) }, fail)
+                        "window" -> vehicle.getWindow().checkWindowPositionCapabilities(
+                            { config, areas ->
+                                val chosen = WindowArea(WindowValue.ROW_1_LEFT)
+                                val bounds = areas?.get(chosen)
+                                ok(RestSafety.capability(config?.accessType?.name ?: "UNKNOWN", bounds != null,
+                                    bounds?.minValue?.toDouble(), bounds?.maxValue?.toDouble(), 1.0, 0.0, System.currentTimeMillis())
+                                    .copy(area = if (bounds != null) describe(chosen) else null))
+                            }, fail)
                         "seatHeating" -> vehicle.getSeat().checkSeatTemperatureCapabilities(
                             { config, areas -> ok(manualCapability(config, areas?.containsKey(driver) == true, "수면 중 열선 자동 적용 제외 · 차량에서 직접 확인")) }, fail)
                         "smartGlass" -> vehicle.getWindow().checkSmartGlassLevelCapabilities(
@@ -463,7 +475,7 @@ class RestVehicleGateway(context: Context) {
     suspend fun apply(
         temperature: Double? = null, fan: Int? = null, dim: Boolean? = null,
         seatVentilation: Int? = null, hvacPower: Boolean? = null,
-        seatRecline: Int? = null, blind: Int? = null, blindArea: String? = null,
+        seatRecline: Int? = null, blind: Int? = null, blindArea: String? = null, window: Int? = null,
         cabinConsent: Boolean = false, motionConsent: Boolean = false, ownerAlarmId: String = "",
         authorizeWrite: () -> Boolean = { true },
         onChanged: () -> Unit = {}
@@ -478,6 +490,7 @@ class RestVehicleGateway(context: Context) {
         seatVentilation?.let { requests["seatVentilation"] = it.toDouble() }
         seatRecline?.let { requests["seatRecline"] = it.toDouble() }
         blind?.let { requests["blind"] = it.toDouble() }
+        window?.let { requests["window"] = it.toDouble() }
         val plan = RestParallelPlan.create(requests)
         enqueueControlSteps(operationId, plan.steps.map { it.key to requests.getValue(it.key) }, plan)
         if (requests.isEmpty()) { controlStatus = "선택한 차량 설정이 없습니다"; return@runControlOperation true }
@@ -485,30 +498,49 @@ class RestVehicleGateway(context: Context) {
             requireParked(); requireAuthorization(authorizeWrite)
             val target = requests.getValue(key)
             var confirmed = false
+            var recheck: (suspend () -> Boolean)? = null
             runCatching {
                 progress(operationId, key, "checking")
                 val capability = queryCapability(key)
                 check(RestSafety.canRequest(key, target, capability, System.currentTimeMillis())) { "지원·읽기/쓰기·요청 범위 확인 실패: ${capability.message}" }
                 val area = capability.area ?: error("차량 제어 영역 미확인")
                 check(area.authorized(key, cabinConsent)) { "차내 공동 영역 변경에 별도 동의가 필요합니다" }
-                if(key in setOf("seatRecline", "blind")) check(motionConsent) { "움직이는 부분 주변 확인과 이동 동의가 필요합니다" }
+                if(key in setOf("seatRecline", "blind", "window")) check(motionConsent) { "움직이는 부분 주변 확인과 이동 동의가 필요합니다" }
                 if(key == "blind") check(blindArea == area.id) { "선택한 블라인드 영역을 확인할 수 없습니다" }
                 poll(refresh = false); requireParked()
                 val before = getValue(key, area)
                 check(RestSafety.validCapabilityValue(before, capability.min, capability.max, capability.step, capability.origin)) { "기존 값을 안전하게 복원할 수 없습니다" }
                 observeBefore(operationId, key, before)
+                recheck = { RestSafety.shouldRestore(getValue(key, area), before) }
                 requireParked()
                 requireAuthorization(authorizeWrite)
                 Log.i("KkaebiControl", "operation=$operationId key=$key area=${area.id} before=$before target=$target")
                 // Persist before dispatch: a process interruption must not erase recovery information.
                 record(key, before, target, area = area, cabinConsent = cabinConsent, ownerAlarmId = ownerAlarmId)
-                setValue(key, target, area, capability, authorizeWrite, onDispatch = {
+                var dispatched = false
+                val writeResult = runCatching { setValue(key, target, area, capability, authorizeWrite, onDispatch = {
                     markDispatched(key)
+                    dispatched = true
                     progress(operationId, key, "writing")
-                }, onObserved = { start, value -> observePosition(operationId, key, start, value) })
+                }, onObserved = { start, value -> observePosition(operationId, key, start, value) }) }
+                writeResult.exceptionOrNull()?.let { if (it is RestOperationInterrupted || it is RestOperationRevoked || it is CancellationException && it !is TimeoutCancellationException) throw it }
+                val noProgress = writeResult.exceptionOrNull()?.message?.startsWith("위치 변화가 없어") == true
+                if (!dispatched || key in setOf("seatRecline", "blind") && writeResult.isFailure && !noProgress) throw writeResult.exceptionOrNull() ?: IllegalStateException("쓰기 시작 실패")
                 progress(operationId, key, "verifying")
-                val after = getValue(key, area)
-                check(RestSafety.shouldRestore(after, target)) { "설정 적용 확인 실패" }
+                val after = if (noProgress) before else verifyValue(key, area, target) { value -> if (key == "window") observePosition(operationId, key, before, value) }
+                if (!RestSafety.shouldRestore(after, target)) {
+                    // The SDK accepted the command (set onSuccess, or MOVE acknowledged then stopped) but the
+                    // vehicle did not report the new value. Keep the journal so wake-up still restores, and
+                    // report this as "accepted", never as "applied".
+                    check(noProgress || writeResult.isSuccess) { "설정 적용 확인 실패 · observed=$after write=${writeResult.exceptionOrNull()?.message}" }
+                    Log.i("KkaebiControl", "operation=$operationId key=$key accepted-without-readback observed=$after target=$target motor=$noProgress")
+                    // Unconfirmed in the journal: wake-up reasserts the original value instead of assuming a manual change.
+                    record(key, before, target, confirmed = false, dispatched = true, area = area, cabinConsent = cabinConsent, ownerAlarmId = ownerAlarmId)
+                    confirmed = true
+                    updateControlResult(operationId, key, JSONObject().put("state", "accepted").put("requested", target).put("actual", after))
+                    progress(operationId, key, "accepted", actual = after)
+                    return@runCatching
+                }
                 record(key, before, target, confirmed = true, dispatched = true, area = area, cabinConsent = cabinConsent, ownerAlarmId = ownerAlarmId)
                 confirmed = true
                 updateControlResult(operationId, key, JSONObject().put("state", "applied").put("requested", target).put("actual", after))
@@ -520,6 +552,8 @@ class RestVehicleGateway(context: Context) {
                 if (it is CancellationException && it !is TimeoutCancellationException) throw it
                 if (it is RestOperationInterrupted || it is RestOperationRevoked) throw it
                 requireParked()
+                // A rejected write that left the vehicle at its original value has nothing to restore later.
+                runCatching { if (recheck?.invoke() == true) { removeRecord(key); Log.i("KkaebiControl", "operation=$operationId key=$key unchanged-after-failure journal-cleared") } }
                 val message = it.message ?: "권한/서비스 확인"
                 updateControlResult(operationId, key, JSONObject().put("state", "failed").put("message", message))
                 progress(operationId, key, "failed", message = message)
@@ -565,16 +599,31 @@ class RestVehicleGateway(context: Context) {
                 observeBefore(operationId, key, current)
                 Log.i("KkaebiControl", "operation=$operationId key=$key area=${area.id} current=$current original=${item.getDouble("before")} applied=${item.getDouble("applied")} confirmed=${item.optBoolean("confirmed", false)}")
                 val decision = RestSafety.restoreDecision(current, item.getDouble("applied"), item.optBoolean("confirmed", false))
-                if (decision == "restore") {
+                // An old unconfirmed apply may have left the vehicle at its original value.
+                // Reassert that value through the SDK and clear the journal only after readback.
+                if (decision == "restore" || decision == "pending" && RestSafety.shouldRestore(current, item.getDouble("before"))) {
                     val before = item.getDouble("before")
                     check(RestSafety.validCapabilityValue(before, capability.min, capability.max, capability.step, capability.origin)) { "원래 값이 현재 차량 범위 밖입니다" }
-                    requireParked(); setValue(key, before, area, capability, onDispatch = {
+                    requireParked(); var dispatched = false
+                    val writeResult = runCatching { setValue(key, before, area, capability, onDispatch = {
                         markRestoreDispatched(key)
+                        dispatched = true
                         progress(operationId, key, "writing")
-                    }, onObserved = { start, value -> observePosition(operationId, key, start, value) })
+                    }, onObserved = { start, value -> observePosition(operationId, key, start, value) }) }
+                    writeResult.exceptionOrNull()?.let { if (it is RestOperationInterrupted || it is RestOperationRevoked || it is CancellationException && it !is TimeoutCancellationException) throw it }
+                    val noProgress = writeResult.exceptionOrNull()?.message?.startsWith("위치 변화가 없어") == true
+                    if (!dispatched || key in setOf("seatRecline", "blind") && writeResult.isFailure && !noProgress) throw writeResult.exceptionOrNull() ?: IllegalStateException("복원 쓰기 시작 실패")
                     progress(operationId, key, "verifying")
-                    val actual = getValue(key, area)
-                    check(RestSafety.shouldRestore(actual, item.getDouble("before"))) { "복원 확인 실패" }
+                    val actual = if (noProgress) current else verifyValue(key, area, before) { value -> if (key == "window") observePosition(operationId, key, current, value) }
+                    if (!RestSafety.shouldRestore(actual, before)) {
+                        check(noProgress || writeResult.isSuccess) { "복원 확인 실패 · observed=$actual write=${writeResult.exceptionOrNull()?.message}" }
+                        Log.i("KkaebiControl", "operation=$operationId key=$key restore-accepted-without-readback observed=$actual target=$before motor=$noProgress")
+                        removeRecord(key)
+                        confirmed = true
+                        updateControlResult(operationId, key, JSONObject().put("state", "accepted").put("actual", actual))
+                        progress(operationId, key, "accepted", actual = actual)
+                        return@runCatching
+                    }
                     removeRecord(key)
                     confirmed = true
                     updateControlResult(operationId, key, JSONObject().put("state", "restored").put("actual", actual))
@@ -611,7 +660,7 @@ class RestVehicleGateway(context: Context) {
         val cap = queryCapability("hvacPower")
         check(cap.state == "supported" && cap.access == "READ_WRITE")
         val area = cap.area ?: error("공조 전원 영역 미확인")
-        val current = getValue("hvacPower", area)
+        val current = verifyValue("hvacPower", area, 1.0)
         requireParked()
         Log.i("KkaebiControl", "dependency=hvacPower area=${area.id} observed=$current")
         current == 1.0
@@ -722,6 +771,7 @@ class RestVehicleGateway(context: Context) {
         when (key) {
             "seatRecline" -> read<Int> { ok, fail -> vehicle.getSeat().getCurrentSeatBackrestAnglePosition(targetSeat, ok, fail) }.toDouble()
             "blind" -> read<Int> { ok, fail -> vehicle.getWindow().getCurrentWindowBlindPosition(windowArea(area), ok, fail) }.toDouble()
+            "window" -> readWindow(area)
             "temperature" -> read<Float> { ok, fail -> vehicle.getHVAC().getHvacTemperature(targetSeat, TemperatureUnit.CELSIUS, ok, fail) }.toDouble()
             "fan" -> read<Int> { ok, fail -> vehicle.getHVAC().getHvacFanSpeed(targetSeat, ok, fail) }.toDouble()
             "brightness" -> read<Int> { ok, fail -> vehicle.getLight().getAmbientLightBrightness(targetSeat, ok, fail) }.toDouble()
@@ -730,14 +780,31 @@ class RestVehicleGateway(context: Context) {
             else -> error("허용되지 않은 설정")
         }.also { check(it.isFinite()) }
     }
+    private suspend fun verifyValue(key: String, area: RestControlArea, target: Double, onObserved: (Double) -> Unit = {}): Double {
+        var observed = Double.NaN
+        repeat(8) { attempt ->
+            requireParked()
+            observed = runCatching { getValue(key, area) }.getOrElse {
+                Log.w("KkaebiControl", "key=$key readback attempt=$attempt error=${it.message}")
+                Double.NaN
+            }
+            Log.i("KkaebiControl", "key=$key readback attempt=$attempt observed=$observed target=$target area=${area.id}")
+            if (observed.isFinite()) onObserved(observed)
+            if (RestSafety.shouldRestore(observed, target)) return observed
+            if (attempt < 7) delay(250)
+        }
+        return observed
+    }
     private suspend fun setValue(key: String, value: Double, area: RestControlArea, capability: RestControlCapability,
         authorizeWrite: () -> Boolean = { true }, onDispatch: () -> Unit = {}, onObserved: (Double, Double) -> Unit = { _, _ -> }) {
         if(key in setOf("seatRecline", "blind")) { moveTo(key, value, area, capability, authorizeWrite, onDispatch, onObserved); return }
-        withTimeout(2000) {
-        val targetSeat = seatArea(area)
+        withTimeout(if (key == "window") 5000 else 2000) {
+        val targetSeat = if (area.kind == "seat") seatArea(area) else driver
         requireParked()
         // Re-evaluate after suspending SDK reads: notification ACK can revoke a preset too.
         requireAuthorization(authorizeWrite)
+        val windowStart = if (key == "window") readWindow(area) else null
+        requireParked(); requireAuthorization(authorizeWrite)
         onDispatch()
         when (key) {
             "temperature" -> write<Float> { ok, fail -> vehicle.getHVAC().setHvacTemperature(targetSeat, value.toFloat(), TemperatureUnit.CELSIUS, ok, fail) }
@@ -745,6 +812,19 @@ class RestVehicleGateway(context: Context) {
             "brightness" -> write<Int> { ok, fail -> vehicle.getLight().setAmbientLightBrightness(targetSeat, value.toInt(), ok, fail) }
             "seatVentilation" -> write<Int> { ok, fail -> vehicle.getSeat().setHvacSeatVentilation(targetSeat, value.toInt(), ok, fail) }
             "hvacPower" -> write<Boolean> { ok, fail -> vehicle.getHVAC().setHvacPower(targetSeat, value == 1.0, ok, fail) }
+            "window" -> coroutineScope {
+                val start = windowStart ?: error("창문 시작 위치 미확인")
+                val sampler = launch { while (true) {
+                    runCatching { withTimeout(400) { readWindow(area) } }.getOrNull()?.let { onObserved(start, it) }
+                    delay(100)
+                } }
+                try { suspendCancellableCoroutine<Unit> { c -> vehicle.getWindow().setWindowPosition(windowArea(area), value.toInt(),
+                    { returnedArea, returned -> if (c.isActive) {
+                        if (returnedArea == windowArea(area) && returned == value.toInt()) c.resume(Unit)
+                        else c.resumeWithException(IllegalStateException("창문 응답 불일치"))
+                    } }, { if (c.isActive) c.resumeWithException(it) }) } }
+                finally { sampler.cancelAndJoin() }
+            }
             else -> error("허용되지 않은 설정")
         }
     }
@@ -905,7 +985,8 @@ class RestVehicleGateway(context: Context) {
     private suspend fun <T> read(call: ((T?) -> Unit, (Exception) -> Unit) -> Unit): T = suspendCancellableCoroutine { c ->
         call({ value -> if (c.isActive) { if (value == null) c.resumeWithException(IllegalStateException("값 사용 불가")) else c.resume(value) } }, { if (c.isActive) c.resumeWithException(it) })
     }
-    private suspend fun <T> write(call: ((SeatArea, T?) -> Unit, (Exception) -> Unit) -> Unit): T = suspendCancellableCoroutine { c ->
-        call({ _, value -> if (c.isActive) { if (value == null) c.resumeWithException(IllegalStateException("적용 응답 없음")) else c.resume(value) } }, { if (c.isActive) c.resumeWithException(it) })
+    private suspend fun <T> write(call: ((SeatArea, T?) -> Unit, (Exception) -> Unit) -> Unit): T? = suspendCancellableCoroutine { c ->
+        call({ area, value -> Log.i("KkaebiControl", "write callback area=${describe(area).id} value=$value"); if (c.isActive) c.resume(value) },
+            { Log.w("KkaebiControl", "write callback failure=${it.message}"); if (c.isActive) c.resumeWithException(it) })
     }
 }

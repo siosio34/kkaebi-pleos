@@ -67,6 +67,8 @@ class RestCapabilityTest {
             assertFalse(RestSafety.canRequest(it, 1.5, capability(), now))
             assertFalse(RestSafety.canRequest(it, 1.0, capability().copy(automatic = false), now))
         }
+        assertTrue(RestSafety.canRequest("window", 0.0, capability(0.0, 100.0), now))
+        assertFalse(RestSafety.canRequest("window", 10.0, capability(0.0, 100.0), now))
         listOf("windowClose", "seatHeating", "smartGlass", "wiper").forEach {
             assertFalse(RestSafety.canRequest(it, 1.0, capability(), now))
         }

@@ -39,7 +39,7 @@ data class RestControlOperation(
 
     /** Position travel is measured, not elapsed time or a MOVE acknowledgement. */
     fun observedPosition(expectedId: String, key: String, start: Double, value: Double, at: Long): RestControlOperation {
-        if (id != expectedId || phase != "running" || key !in setOf("seatRecline", "blind") ||
+        if (id != expectedId || phase != "running" || key !in setOf("seatRecline", "blind", "window") ||
             !start.isFinite() || !value.isFinite() || at <= 0) return this
         return copy(steps = steps.map { step ->
             val target = step.requested
@@ -53,7 +53,7 @@ data class RestControlOperation(
 
     fun finish(expectedId: String, successful: Boolean): RestControlOperation =
         if (id == expectedId && phase == "running") {
-            val confirmed = successful && steps.all { it.state in setOf("applied", "restored", "manualPreserved") }
+            val confirmed = successful && steps.all { it.state in setOf("applied", "restored", "manualPreserved", "accepted") }
             copy(phase = if (confirmed) "complete" else "failed", steps = steps.map {
                 if (it.terminal) it else it.copy(state = "failed", message = "작업이 중단되었습니다 · 차량 설정을 확인해 주세요")
             })
@@ -61,8 +61,8 @@ data class RestControlOperation(
 
     companion object {
         fun allConfirmed(operation: String, itemStates: Collection<String>): Boolean = when (operation) {
-            "apply" -> itemStates.all { it == "applied" }
-            "restore" -> itemStates.all { it == "restored" || it == "manualPreserved" }
+            "apply" -> itemStates.all { it == "applied" || it == "accepted" }
+            "restore" -> itemStates.all { it == "restored" || it == "manualPreserved" || it == "accepted" }
             else -> false
         }
     }
@@ -84,7 +84,7 @@ data class RestControlStep(
     val blockedBy: List<String> = emptyList()
 ) {
     val progressSource: String? get() = if (observed != null && positionProgress != null) "sdk-position" else null
-    val terminal: Boolean get() = state in setOf("applied", "restored", "failed", "blocked", "manualPreserved")
+    val terminal: Boolean get() = state in setOf("applied", "restored", "failed", "blocked", "manualPreserved", "accepted")
     fun permits(next: String, operation: String?): Boolean = !terminal && when (next) {
         "checking" -> state == "queued"
         "writing" -> state == "checking"
@@ -92,6 +92,8 @@ data class RestControlStep(
         "applied" -> operation == "apply" && state == "verifying"
         "restored" -> operation == "restore" && state == "verifying"
         "manualPreserved" -> operation == "restore" && state == "checking"
+        // SDK accepted the command but the vehicle did not report the new value back.
+        "accepted" -> state == "verifying" || state == "writing"
         "blocked" -> state == "queued"
         "failed" -> true
         else -> false

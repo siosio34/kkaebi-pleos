@@ -184,7 +184,7 @@ test('unknown driver-facing errors never echo raw SDK text and preserve diagnost
 test('native environment plan excludes unknown and unsupported controls without changing preferences',()=>{
  let s=prepare();s.signal={...sig,controlCapabilities:{temperature:{state:'supported'},fan:{state:'unsupported'},brightness:{state:'unknown'}}};
  const original={...s.preset};a.deepEqual(C.eligibleControls(s),{temperature:22});a.deepEqual(s.preset,original);
- const plan=C.environmentPlan(s);a.equal(plan.length,7);a.equal(plan.find(x=>x.key==='fan').state,'unsupported');a.equal(plan.find(x=>x.key==='brightness').state,'unknown');
+ const plan=C.environmentPlan(s);a.equal(plan.length,8);a.equal(plan.find(x=>x.key==='fan').state,'unsupported');a.equal(plan.find(x=>x.key==='brightness').state,'unknown');a.equal(plan.find(x=>x.key==='window').state,'unknown');
 });
 test('missing capability and manual-only native controls never enter automatic payload',()=>{
  let s=prepare();s.signal={...sig,controlCapabilities:{temperature:{state:'supported',manualRequired:true}}};

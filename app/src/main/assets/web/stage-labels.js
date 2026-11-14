@@ -5,7 +5,7 @@
   const nodes = new Map(), SVG = 'http://www.w3.org/2000/svg';
   function make(key, layer, svg) {
     const node = document.createElement('button');
-    node.type = 'button'; node.className = 'stage-label'; node.innerHTML = '<b></b><strong></strong><em></em>';
+    node.type = 'button'; node.className = 'stage-label'; node.innerHTML = '<b></b><strong></strong><em></em><i class="meter"><u></u></i>';
     const line = document.createElementNS(SVG, 'line'), dot = document.createElementNS(SVG, 'circle');
     dot.setAttribute('r', '3'); svg.append(line, dot); layer.append(node);
     const entry = {node, line, dot}; nodes.set(key, entry); return entry;
@@ -21,6 +21,8 @@
       seen.add(item.key);
       text(entry.node.children[0], item.name); text(entry.node.children[1], item.value); text(entry.node.children[2], item.status || '');
       entry.node.dataset.state = item.state || 'idle'; entry.node.dataset.on = String(on);
+      const meter = entry.node.children[3], pg = item.progress;
+      meter.dataset.kind = pg == null ? 'none' : pg < 0 ? 'busy' : 'value'; meter.firstChild.style.width = pg != null && pg >= 0 ? Math.round(pg * 100) + '%' : '';
       entry.node.dataset.selected = String(!!item.selected);
       if (item.option) { entry.node.dataset.option = item.option; entry.node.disabled = false; entry.node.tabIndex = 0; }
       else { delete entry.node.dataset.option; entry.node.disabled = true; entry.node.tabIndex = -1; }
@@ -46,6 +48,7 @@
         p.entry.line.setAttribute('x1', lx); p.entry.line.setAttribute('y1', y); p.entry.line.setAttribute('x2', p.x); p.entry.line.setAttribute('y2', p.y);
         p.entry.dot.setAttribute('cx', p.x); p.entry.dot.setAttribute('cy', p.y);
         p.entry.line.dataset.active = p.entry.dot.dataset.active = String(!!active);
+        p.entry.dot.dataset.state = p.item.state || 'idle';
       });
     }
   };

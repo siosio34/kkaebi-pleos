@@ -8,6 +8,21 @@ class RestControlProgressTest {
     private fun queued(operation: String = "apply") = RestControlOperation().begin(operation, "one")
         .enqueue("one", listOf("temperature" to 22.0, "seatVentilation" to 1.0))
 
+    @Test fun windowProgressUsesObservedPositionButNeedsFinalReadback() {
+        val writing = RestControlOperation().begin("apply", "window-op")
+            .enqueue("window-op", listOf("window" to 0.0))
+            .progress("window-op", "window", "checking")
+            .observedBefore("window-op", "window", 60.0)
+            .progress("window-op", "window", "writing")
+            .observedPosition("window-op", "window", 60.0, 30.0, 1000L)
+        assertEquals(0.5, writing.steps.single().positionProgress!!, 0.0)
+        assertNull(writing.steps.single().actual)
+        val verified = writing.progress("window-op", "window", "verifying")
+            .observedPosition("window-op", "window", 60.0, 0.0, 1200L)
+            .progress("window-op", "window", "applied", 0.0)
+        assertEquals("applied", verified.steps.single().state)
+    }
+
     @Test fun queuesOnlySelectedItemsInSdkOrderAndOldSnapshotStaysUnchanged() {
         val start = queued()
         val next = start.progress("one", "temperature", "checking")

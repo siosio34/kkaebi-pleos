@@ -11,6 +11,7 @@ data class RestControlArea(val kind: String, val names: List<String>) {
     fun authorized(key: String, cabinConsent: Boolean): Boolean = when (key) {
         "seatRecline", "seatVentilation" -> kind == "seat" && scope == "driver"
         "blind" -> kind == "window" && names.size == 1
+        "window" -> kind == "window" && names == listOf("ROW_1_LEFT")
         "temperature", "fan", "brightness", "hvacPower" -> kind == "seat" &&
             "ROW_1_LEFT" in names && (scope == "driver" || cabinConsent)
         else -> false

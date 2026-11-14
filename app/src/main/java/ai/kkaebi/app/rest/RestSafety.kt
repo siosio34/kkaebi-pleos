@@ -54,6 +54,7 @@ object RestSafety {
                 "seatVentilation" -> value in 0.0..3.0 && value == round(value)
                 "hvacPower" -> value == 0.0 || value == 1.0
                 "seatRecline", "blind" -> value == round(value)
+                "window" -> value == capability.min
                 else -> false
             }
 

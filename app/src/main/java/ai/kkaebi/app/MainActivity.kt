@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
             } }
             bridge.onWaypointConfirmed = { runOnUiThread { drowsyGuide.waypointConfirmed(); publish() } }
             bridge.onRouteDistance = { meters -> runOnUiThread { drowsyGuide.routeDistance(meters); publish() } }
+            bridge.onResumeChanged = { runOnUiThread { publish() } }
             bridge.start()
         }
         voice = Voice(this)
@@ -259,6 +260,7 @@ class MainActivity : ComponentActivity() {
             .put("audioStatus", audioStatus).put("controlStatus", gateway.controlStatus)
             .put("motionStopUnconfirmed", gateway.motionStopUnconfirmed)
             .put("pendingRestore", gateway.pendingRestore).put("naviStatus", naviStatus)
+            .put("routeResume", drowsyNavi.routeResumeJson())
             .put("nextRestAreaM", nextRestAreaM?.takeIf { System.currentTimeMillis() - nextRestAreaAt in 0..30_000 } ?: JSONObject.NULL)
             .put("controlCapabilities", gateway.controlCapabilities).put("controlResults", JSONObject(controlState.resultsJson))
             .put("controlOperationId", controlState.id).put("controlOperation", controlState.operation ?: JSONObject.NULL)
@@ -376,6 +378,7 @@ class MainActivity : ComponentActivity() {
                         drowsyNavi.clearGuide()
                         drowsyWaypointRetries = 0
                         drowsyGuide.start(data.optString("requestId"))
+                        drowsyNavi.rememberDrowsyRoute()
                         publish()
                         drowsyNavi.requestLocation()
                         val fresh = System.currentTimeMillis() - drowsyNavi.locationAt in 0..15_000
@@ -390,6 +393,10 @@ class MainActivity : ComponentActivity() {
                         publish()
                     }
                     "drowsyComfort" -> drowsyLock.withLock { applyDrowsyComfort(data) }
+                    "routeResume" -> drowsyLock.withLock {
+                        if (!gateway.pendingRestore && gateway.controlOperationState.phase != "running" && drowsyNavi.hasPendingRoute()) drowsyNavi.resumeRoute()
+                        publish()
+                    }
                     "ready" -> { webReady = true; publish(); dispatchCommand() }
                     "openDemo" -> {
                         if (canOpenDemo()) {
@@ -478,6 +485,7 @@ class MainActivity : ComponentActivity() {
                         control = scope.launch { try {
                             gateway.restore(onChanged = { bindRoutineOperation(routine().optString("alarmId")); publish() })
                             updateRoutine(if(gateway.pendingRestore) "failed" else "complete", gateway.controlStatus)
+                            if (!gateway.pendingRestore && drowsyNavi.hasPendingRoute()) drowsyNavi.resumeRoute()
                         } finally { publish() } }
                     }
                     "navigate" -> {
@@ -667,13 +675,13 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun validPlan(plan: JSONObject): Boolean {
-        val permitted = setOf("temperature", "fan", "dim", "seatVentilation", "hvacPower", "seatRecline", "blind", "blindArea")
+        val permitted = setOf("temperature", "fan", "dim", "seatVentilation", "hvacPower", "seatRecline", "blind", "blindArea", "window")
         if(plan.keys().asSequence().any { it !in permitted }) return false
         return plan.keys().asSequence().all { key -> plan.isNull(key) || when(key) {
             "temperature" -> NativeInputPolicy.temperature(plan.opt(key)) != null
             "fan" -> NativeInputPolicy.integer(plan.opt(key), 1, 3) != null
             "seatVentilation" -> NativeInputPolicy.integer(plan.opt(key), 0, 3) != null
-            "seatRecline", "blind" -> NativeInputPolicy.integer(plan.opt(key), -1_000_000, 1_000_000) != null
+            "seatRecline", "blind", "window" -> NativeInputPolicy.integer(plan.opt(key), -1_000_000, 1_000_000) != null
             "dim", "hvacPower" -> plan.opt(key) is Boolean
             "blindArea" -> plan.opt(key) is String && plan.getString(key).length <= 100
             else -> false
@@ -690,7 +698,7 @@ class MainActivity : ComponentActivity() {
             plan == null || !strictFlags || !validPlan(plan) -> "휴식 설정 형식을 확인해 주세요"
             !gateway.parked() -> "안전한 곳에서 신선한 P·정지 상태를 확인해 주세요"
             gateway.pendingRestore && hasPhysicalSelection(plan) -> "이전 설정을 먼저 복원하거나 차량 설정 없이 알람만 시작해 주세요"
-            listOf("seatRecline", "blind").any { plan.has(it) && !plan.isNull(it) } && !data.optBoolean("motionConsent") -> "시트·블라인드 주변 확인과 이동 동의가 필요합니다"
+            listOf("seatRecline", "blind", "window").any { plan.has(it) && !plan.isNull(it) } && !data.optBoolean("motionConsent") -> "시트·블라인드·창문 주변 확인과 이동 동의가 필요합니다"
             NativeInputPolicy.integer(data.opt("durationMinutes"), 10, 30) == null -> "휴식 시간을 확인해 주세요"
             else -> null
         }
@@ -719,6 +727,7 @@ class MainActivity : ComponentActivity() {
                     hvacPower = plan.opt("hvacPower") as? Boolean,
                     seatRecline = plan.opt("seatRecline").let { if(it is Number) it.toInt() else null },
                     blind = plan.opt("blind").let { if(it is Number) it.toInt() else null },
+                    window = plan.opt("window").let { if(it is Number) it.toInt() else null },
                     blindArea = plan.optString("blindArea").takeIf { it.isNotBlank() },
                     cabinConsent = data.optBoolean("cabinConsent"), motionConsent = data.optBoolean("motionConsent"), ownerAlarmId = scheduled.id,
                     authorizeWrite = { active && epoch == routineEpoch && alarms.snapshot().let { it.state == "scheduled" && it.id == scheduled.id } },
@@ -768,6 +777,7 @@ class MainActivity : ComponentActivity() {
                 gateway.restore(expectedOwner = r.optString("alarmId"), onChanged = { bindRoutineOperation(r.optString("alarmId")); publish() })
                 }
                 updateRoutine(if(gateway.pendingRestore) "failed" else "complete", gateway.controlStatus)
+                if (!gateway.pendingRestore && drowsyNavi.hasPendingRoute()) drowsyNavi.resumeRoute()
             } catch(e: Exception) { updateRoutine("failed", "자동 복원을 마치지 못했습니다 · 정차 후 복원을 다시 확인해 주세요"); throw e }
             finally { publish() }
         }

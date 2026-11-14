@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'/Users/heka/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const T=require('../app/src/main/assets/web/demo/tour.js');
 const base=process.env.SLEEP_DEMO_URL||'http://127.0.0.1:8897/app/src/main/assets/web/demo/',out=path.join(__dirname,'../verification/parallel-v9');
 fs.mkdirSync(out,{recursive:true});

@@ -12,13 +12,13 @@ data class RestParallelPlan(val steps: List<RestParallelStep>, val powerOnSelect
 
     companion object {
         fun create(targets: Map<String, Double?>, restoring: Boolean = false): RestParallelPlan {
-            require(targets.keys.all { it in setOf("seatRecline", "blind", "brightness", "seatVentilation", "hvacPower", "temperature", "fan") })
+            require(targets.keys.all { it in setOf("seatRecline", "blind", "window", "brightness", "seatVentilation", "hvacPower", "temperature", "fan") })
             val on = targets["hvacPower"] == 1.0
-            val motors = if (restoring) listOf("blind", "seatRecline") else listOf("seatRecline", "blind")
+            val motors = if (restoring) listOf("window", "blind", "seatRecline") else listOf("seatRecline", "blind", "window")
             val steps = (motors + listOf("brightness", "seatVentilation", "hvacPower", "temperature", "fan"))
                 .filter { it in targets }.map { key ->
                     RestParallelStep(key, when (key) {
-                        "seatRecline", "blind" -> "motor"
+                        "seatRecline", "blind", "window" -> "motor"
                         "brightness", "seatVentilation" -> "environment"
                         else -> "hvac"
                     }, when {

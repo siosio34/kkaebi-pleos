@@ -14,10 +14,12 @@ object RestWritePolicy {
             "seatVentilation" -> 4
             "blind" -> 5
             "seatRecline" -> 6
+            "window" -> 0
             else -> 7
         } else when(key) {
             "seatRecline" -> 0
             "blind" -> 1
+            "window" -> 2
             "hvacPower" -> if(targets[key] == 1.0) 2 else 99
             "temperature" -> 3
             "fan" -> 4
