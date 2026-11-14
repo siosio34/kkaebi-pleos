@@ -8,18 +8,21 @@
 
 ## 시연
 
-- 영상: [docs/kkaebi-journey-demo.mp4](docs/kkaebi-journey-demo.mp4) (2분 30초, [한국어 자막](docs/kkaebi-journey-demo.ko.srt))
-- 영상은 release APK의 통합 여정 시연 화면을 에뮬레이터에서 녹화한 것입니다. 경로, 대화, 운전자 응답, 하드웨어 진행 값은 작성한 시나리오이고 차량을 제어하지 않습니다. 실제 SDK 실행 결과는 [ANDROID-VALIDATION.md](ANDROID-VALIDATION.md)에 따로 적었습니다.
+- 영상: [docs/kkaebi-journey-demo.mp4](docs/kkaebi-journey-demo.mp4) (2분 30초, 1080p, 음성 포함, [한국어 자막](docs/kkaebi-journey-demo.ko.srt))
+- 영상은 앱에 내장된 통합 여정 시연 화면(`app/src/main/assets/web/demo/journey.html`)을 프레임 단위로 렌더한 것입니다. 같은 화면이 Pleos Connect 에뮬레이터의 release APK에서 실행됩니다(아래 첫 번째 그림).
+- 경로, 대화, 운전자 응답, 하드웨어 진행 값은 작성한 시나리오이고 이 화면은 차량을 제어하지 않습니다. 실제 SDK 실행 결과는 [ANDROID-VALIDATION.md](ANDROID-VALIDATION.md)에 따로 적었습니다.
+
+![Pleos Connect 에뮬레이터에서 실행한 통합 여정 시연](docs/emulator-journey.png)
 
 | 쉼터 안내 | 수면 환경 준비 |
 |---|---|
-| ![쉼터 안내](docs/17.png) | ![수면 환경 준비](docs/67.png) |
-| 20분 휴식 | 기상 후 복원 |
-| ![휴식](docs/85.png) | ![복원](docs/105.png) |
+| ![쉼터 안내](docs/scene-route.jpg) | ![수면 환경 준비](docs/scene-prepare.jpg) |
+| 20분 휴식 | 다시 출발 |
+| ![휴식](docs/scene-rest.jpg) | ![다시 출발](docs/scene-resume.jpg) |
 
 ## 실행 방법
 
-APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.10.0 (10), 패키지 `ai.kkaebi.app.contest`.
+APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.11.0 (11), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
 adb -s <기기 시리얼> install -r apk/kkaebi_release.apk
@@ -29,7 +32,7 @@ adb -s <기기 시리얼> shell am start -n ai.kkaebi.app.contest/ai.kkaebi.app.
 1. 홈에서 휴식 시간(10·15·20·25·30분)을 고르고 **수면모드 준비**를 누릅니다.
 2. 정차와 동의 항목을 확인하면 알람을 예약하고 시트·블라인드, 조명·통풍, 공조를 함께 준비합니다.
 3. 알람이 울리면 **일어났어요 · 자동 복원**으로 이전 설정을 되돌립니다.
-4. 홈의 **통합 여정 시연**에서 졸음 호출부터 재출발까지 150초 시나리오를 볼 수 있습니다. 이 화면은 차량을 제어하지 않습니다.
+4. 홈의 **통합 여정 시연**에서 졸음 호출부터 재출발까지 150초 시나리오를 3D 장면으로 볼 수 있습니다. 이 화면은 차량을 제어하지 않습니다.
 
 ## 테스트 환경과 필요한 설정
 
@@ -56,6 +59,7 @@ release 빌드에는 서명 키가 필요합니다. 키는 저장소에 넣지 �
 | 경로 | 내용 |
 |---|---|
 | `app/src/main/assets/web/` | WebView로 띄우는 화면. HTML, CSS, JS, Pretendard 서체, 실내 모형 |
+| `app/src/main/assets/web/demo/journey*.{html,css,js}` | three.js로 만든 통합 여정 시연. 차량·쉼터 모형은 코드로 생성 |
 | `app/src/main/java/ai/kkaebi/app/rest/` | 수면 환경 준비와 복원. 안전 조건, 변경 전 값 저장, 병렬 실행 |
 | `app/src/main/java/ai/kkaebi/app/alarm/` | 시스템 알람 예약과 재생 |
 | `app/src/main/java/ai/kkaebi/app/vehicle/` | Pleos Vehicle SDK 연결 |
@@ -79,4 +83,4 @@ release 빌드에는 서명 키가 필요합니다. 키는 저장소에 넣지 �
 
 ## 라이선스
 
-서체 Pretendard는 SIL Open Font License 1.1을 따릅니다. [licenses/](licenses/) 참고.
+서체 Pretendard는 SIL Open Font License 1.1, three.js(r149)는 MIT License를 따릅니다. [licenses/](licenses/) 참고.

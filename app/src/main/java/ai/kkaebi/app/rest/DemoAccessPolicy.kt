@@ -3,7 +3,7 @@ package ai.kkaebi.app.rest
 /** The demo has no command bridge. This policy only controls access to its local presentation. */
 object DemoAccessPolicy {
     const val LIVE_PAGE = "file:///android_asset/web/index.html"
-    const val DEMO_PAGE = "file:///android_asset/web/demo/story.html"
+    const val DEMO_PAGE = "file:///android_asset/web/demo/journey.html"
     const val LEGACY_DEMO_PAGE = "file:///android_asset/web/demo/index.html"
     const val EXIT_DEMO = "kkaebi://exit-demo"
 
@@ -26,7 +26,7 @@ object DemoAccessPolicy {
         if (scheme != "file" || !authority.isNullOrEmpty() || path == null || path.contains("..") ||
             path.contains('\\') || path.contains('%')) return false
         if (!path.startsWith("/android_asset/web/") && !path.startsWith("/android_asset/character/")) return false
-        val allowedHtml = if (demo) setOf("/android_asset/web/demo/story.html", "/android_asset/web/demo/index.html")
+        val allowedHtml = if (demo) setOf("/android_asset/web/demo/journey.html", "/android_asset/web/demo/index.html")
             else setOf("/android_asset/web/index.html")
         return !path.endsWith(".html", ignoreCase = true) || path in allowedHtml
     }

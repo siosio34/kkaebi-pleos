@@ -56,13 +56,13 @@ class DemoAccessPolicyTest {
         assertFalse(DemoAccessPolicy.allowsAsset(true, "file", null, null))
     }
     @Test fun storyIsDefaultAndOnlyTwoExactDemoUrlsAreRecognized() {
-        assertEquals("file:///android_asset/web/demo/story.html", DemoAccessPolicy.DEMO_PAGE)
+        assertEquals("file:///android_asset/web/demo/journey.html", DemoAccessPolicy.DEMO_PAGE)
         assertTrue(DemoAccessPolicy.isDemoPage(DemoAccessPolicy.DEMO_PAGE))
         assertTrue(DemoAccessPolicy.isDemoPage(DemoAccessPolicy.LEGACY_DEMO_PAGE))
         for (url in listOf(null, DemoAccessPolicy.LIVE_PAGE, DemoAccessPolicy.DEMO_PAGE + "?run=1",
-                DemoAccessPolicy.DEMO_PAGE + "#start", "file://remote/android_asset/web/demo/story.html",
-                "file:///android_asset/web/demo/../demo/story.html", "file:///android_asset/web/demo/%73tory.html",
-                "https://example.com/story.html", "javascript:startRest()")) assertFalse(DemoAccessPolicy.isDemoPage(url))
+                DemoAccessPolicy.DEMO_PAGE + "#start", "file://remote/android_asset/web/demo/journey.html",
+                "file:///android_asset/web/demo/../demo/journey.html", "file:///android_asset/web/demo/%6Aourney.html",
+                "https://example.com/journey.html", "javascript:startRest()")) assertFalse(DemoAccessPolicy.isDemoPage(url))
     }
 
     @Test fun betweenDemoPagesRequiresCurrentSafeMainFrameAndCannotResetInterruption() {
@@ -78,10 +78,10 @@ class DemoAccessPolicyTest {
     }
 
     @Test fun storyAssetAllowanceDoesNotGiveLiveViewAccessOrBroadenOrigins() {
-        assertTrue(DemoAccessPolicy.allowsAsset(true, "file", "", "/android_asset/web/demo/story.html"))
-        assertFalse(DemoAccessPolicy.allowsAsset(false, "file", "", "/android_asset/web/demo/story.html"))
-        assertFalse(DemoAccessPolicy.allowsAsset(true, "file", "remote", "/android_asset/web/demo/story.html"))
-        assertFalse(DemoAccessPolicy.allowsAsset(true, "https", "example.com", "/android_asset/web/demo/story.html"))
+        assertTrue(DemoAccessPolicy.allowsAsset(true, "file", "", "/android_asset/web/demo/journey.html"))
+        assertFalse(DemoAccessPolicy.allowsAsset(false, "file", "", "/android_asset/web/demo/journey.html"))
+        assertFalse(DemoAccessPolicy.allowsAsset(true, "file", "remote", "/android_asset/web/demo/journey.html"))
+        assertFalse(DemoAccessPolicy.allowsAsset(true, "https", "example.com", "/android_asset/web/demo/journey.html"))
         assertFalse(DemoAccessPolicy.allowsAsset(true, "file", "", "/android_asset/web/demo/other.html"))
     }
 
