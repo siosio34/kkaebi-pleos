@@ -29,7 +29,7 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 
 ## 실행 방법
 
-APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.0 (16), 패키지 `ai.kkaebi.app.contest`.
+APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.1 (17), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
 adb -s <기기 시리얼> install -r apk/조영제_깨비_release.apk
@@ -38,7 +38,7 @@ adb -s <기기 시리얼> shell am start -n ai.kkaebi.app.contest/ai.kkaebi.app.
 
 1. **졸음모드** 탭에서 **졸려요 · 쉼터 찾기**를 누르거나 "깨비야, 졸려"라고 말합니다. 가장 가까운 졸음쉼터와 남은 거리가 나오고 내비에 경유지를 요청합니다.
 2. 가는 동안 **바람 세게**, **창문 조금 열기**, **말 걸지 마**를 고를 수 있습니다.
-3. 쉼터 300m 안에서 P단에 놓으면 도착으로 바뀝니다. **수면모드 준비**에서 시간을 고르고 동의 항목을 확인하면 알람을 예약하고 시트·블라인드, 조명·통풍, 공조를 함께 준비합니다.
+3. 쉼터 300m 안에서 P단에 놓으면 도착으로 바뀝니다. **수면모드 준비**에서 시간을 고르고 동의 항목을 확인하면 알람을 예약하고 시트·블라인드, 조명·통풍, 창문을 함께 준비합니다. 공조는 차량이 현재 온도를 읽어 줄 때만 함께 맞춥니다.
 4. 알람이 울리면 **일어났어요 · 자동 복원**으로 이전 설정을 되돌립니다. 졸음모드로 쉼터에 왔다면 쉼터 경유지를 빼고 원래 목적지로 경로를 되돌립니다.
 5. 홈의 **통합 여정 시연**에서 150초 시나리오를 볼 수 있습니다.
 
@@ -47,15 +47,12 @@ adb -s <기기 시리얼> shell am start -n ai.kkaebi.app.contest/ai.kkaebi.app.
 - Pleos Connect Emulator **v2.1.0** (Android 14, API 34, arm64-v8a, 빌드 `release_connect_v2.1.0`)
 - 화면 규격: 2560 × 1440, 320 dpi, 가로
 - 수면 준비의 차량 제어는 기어 P, 속도 0에서만 동작합니다.
-- 권한: 위치(`pleos.car.permission.FUSED_LOCATION`), 경로 탐색(`NAVI_ROUTE_SEARCH`), 알림, 정확한 알람. 에뮬레이터에서는 아래처럼 허용했습니다.
+- 처음 실행하면 위치, 마이크, 알림, 차량 속도 권한을 차례로 묻습니다. 모두 **허용**을 누르면 됩니다. 거절했다면 홈의 **권한 허용**으로 다시 요청할 수 있습니다. 정확한 알람은 설치할 때 자동으로 허용됩니다(`USE_EXACT_ALARM`).
+- 졸음쉼터 안내와 도착을 에뮬레이터에서 보려면 위치를 옮깁니다. 원래 목적지 복귀를 보려면 먼저 내비 목적지를 넣습니다.
 
 ```sh
-adb shell pm grant ai.kkaebi.app.contest pleos.car.permission.FUSED_LOCATION
-adb shell pm grant ai.kkaebi.app.contest pleos.car.permission.NAVI_ROUTE_SEARCH
-adb shell pm grant ai.kkaebi.app.contest android.permission.POST_NOTIFICATIONS
-adb shell appops set ai.kkaebi.app.contest SCHEDULE_EXACT_ALARM allow
 adb emu geo fix 127.405 36.436   # 죽암 졸음쉼터 2km 앞
-# 원래 목적지 복귀를 보려면 먼저 내비 목적지를 넣는다(시연 준비용)
+adb emu geo fix 127.4131 36.4549 # 죽암 졸음쉼터 도착
 adb shell "am start -n ai.kkaebi.app.contest/ai.kkaebi.app.MainActivity --es kkaebi_destination '37.5547,126.9706,Seoul'"
 ```
 

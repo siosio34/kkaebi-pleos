@@ -147,15 +147,39 @@ class MainActivity : ComponentActivity() {
         if(routine().optString("phase") == "waking") updateRoutine("failed", "앱이 다시 시작되어 자동 복원을 재실행하지 않았습니다 · 차량 설정을 확인해 주세요", attempted = true)
         else if(routine().optString("phase") == "preparing") updateRoutine("resting", "앱이 다시 시작되었습니다 · 환경 설정을 재적용하지 않았습니다")
         publish()
-        val missing = arrayOf("android.car.permission.CAR_SPEED", Manifest.permission.RECORD_AUDIO, "pleos.car.permission.FUSED_LOCATION", "pleos.car.permission.NAVI_ROUTE_SEARCH")
-            .filter { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
-        if (missing.isEmpty()) { permissionReady = true } else ActivityCompat.requestPermissions(this, missing.toTypedArray(), 10)
+        if (missingPermissions().isEmpty()) permissionReady = true
+    }
+
+    private fun missingPermissions() = (arrayOf("android.car.permission.CAR_SPEED", Manifest.permission.RECORD_AUDIO, "pleos.car.permission.FUSED_LOCATION", "pleos.car.permission.NAVI_ROUTE_SEARCH") +
+        if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.POST_NOTIFICATIONS) else emptyArray())
+        .filter { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+
+    // Pleos 런처는 앱을 띄운 직후 창을 화면 칸에 맞춰 다시 배치한다. 그 사이에 권한 창을 열면
+    // 시스템 권한 화면이 재생성되며 죽고 같은 작업의 깨비까지 닫히므로, 창이 자리 잡은 뒤에 묻는다.
+    private var permissionAsked = false
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus || permissionAsked || permissionReady) return
+        permissionAsked = true
+        window.decorView.postDelayed({
+            val missing = missingPermissions()
+            if (missing.isEmpty()) { permissionReady = true; activate() }
+            else if (!isFinishing) ActivityCompat.requestPermissions(this, missing.toTypedArray(), 10)
+        }, 1200)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 10) { permissionReady = true; activate() }
-        if (requestCode == 11) publish()
+        if (requestCode == 10) {
+            permissionReady = true; activate()
+            // 두 번 거절하면 시스템이 창 없이 바로 거절을 돌려준다. 이때는 앱 정보 화면으로 보낸다.
+            val missing = missingPermissions()
+            if (manualPermissionRequest && missing.isNotEmpty() && missing.none { ActivityCompat.shouldShowRequestPermissionRationale(this, it) })
+                runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
+            manualPermissionRequest = false
+            publish()
+        }
+        if (requestCode == 11) { if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) requestAlarmPermission() else publish() }
     }
     override fun onResume() { super.onResume(); active = true; if(::web.isInitialized) { web.onResume(); web.resumeTimers() }; if(::gateway.isInitialized) gateway.setForeground(true); if (::alarms.isInitialized) alarms.reconcileOnOpen(); activate(); dispatchCommand(); publish() }
     private fun activate() {
@@ -242,6 +266,7 @@ class MainActivity : ComponentActivity() {
         val state = JSONObject()
             .put("bridgeVersion", 10).put("restOrchestration", true)
             .put("drowsy", drowsyJson())
+            .put("missingPermissions", org.json.JSONArray(missingPermissions()))
             .put("demoAvailable", canOpenDemo())
             .put("lifecycleActive", active).put("systemAnimationsEnabled", ValueAnimator.areAnimatorsEnabled())
             .put("fontScale", resources.configuration.fontScale.toDouble())
@@ -381,6 +406,9 @@ class MainActivity : ComponentActivity() {
                         drowsyNavi.rememberDrowsyRoute()
                         publish()
                         drowsyNavi.requestLocation()
+                        // 위치가 막 다시 연결되는 중일 수 있으니 바로 실패로 보이지 않고 잠깐 기다린다.
+                        val waitUntil = System.currentTimeMillis() + 5_000
+                        while (System.currentTimeMillis() - drowsyNavi.locationAt !in 0..15_000 && System.currentTimeMillis() < waitUntil) delay(250)
                         val fresh = System.currentTimeMillis() - drowsyNavi.locationAt in 0..15_000
                         updateDrowsyLocation(if (fresh) drowsyNavi.lat else null,
                             if (fresh) drowsyNavi.lng else null, if (fresh) drowsyNavi.heading else null)
@@ -526,6 +554,7 @@ class MainActivity : ComponentActivity() {
                         publish()
                     }
                     "requestAlarmPermission" -> requestAlarmPermission()
+                    "requestCarPermissions" -> requestCarPermissions()
                     "restSoundKind" -> { val k = data.optString("kind"); if (k in setOf("rain", "stream", "waves", "tone")) { restSound.kind = k; getPreferences(MODE_PRIVATE).edit().putString("restSoundKind", k).apply(); if (restSound.playing) restSound.start() }; publish() }
                     "restSound" -> {
                         if(data.optBoolean("enabled") && gateway.parked() && alarms.snapshot().state == "scheduled") restSound.start()
@@ -867,6 +896,13 @@ class MainActivity : ComponentActivity() {
             else -> Unit
         }
         publish()
+    }
+    private var manualPermissionRequest = false
+    private fun requestCarPermissions() {
+        val missing = missingPermissions()
+        if (missing.isEmpty()) { publish(); return }
+        manualPermissionRequest = true
+        ActivityCompat.requestPermissions(this, missing.toTypedArray(), 10)
     }
     private fun requestAlarmPermission() {
         if (!gateway.parked()) { alarmActionMessage="안전한 곳에 주차한 뒤 알람 설정을 열어 주세요"; publish(); return }

@@ -330,8 +330,18 @@ class RestVehicleGateway(context: Context) {
             RestControlCapability(automatic = key in automaticKeys, checkedAt = System.currentTimeMillis(),
                 message = "지원 조회 미완료 · ${e.message?.take(140) ?: "권한 또는 차량 서비스 확인"}")
         }
-        synchronized(stateLock) { capabilities = capabilities + (key to result) }
-        return result
+        val checked = hvacReadable(key, result)
+        synchronized(stateLock) { capabilities = capabilities + (key to checked) }
+        return checked
+    }
+
+    // 공조는 온도·풍량·전원이 한 묶음이다. 지원 조회는 통과해도 현재 온도를 읽지 못하는 차량에서는
+    // 쓰기 결과를 확인할 길이 없으므로, 휴식 계획에 넣지 않고 처음부터 자동 적용 제외로 보여 준다.
+    private suspend fun hvacReadable(key: String, result: RestControlCapability): RestControlCapability {
+        if (key !in setOf("temperature", "fan", "hvacPower") || result.state != "supported") return result
+        val area = (if (key == "temperature") result.area else capabilities["temperature"]?.area ?: result.area) ?: return result
+        val readable = runCatching { getValue("temperature", area) }.isSuccess
+        return if (readable) result else result.copy(state = "unsupported", message = "이 차량에서 공조 현재 값을 읽을 수 없어 자동 적용에서 제외합니다")
     }
 
     private fun describe(area: SeatArea) = RestControlArea("seat", area.values.map { it.name }.sorted())

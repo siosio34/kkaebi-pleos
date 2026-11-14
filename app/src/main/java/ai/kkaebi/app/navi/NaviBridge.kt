@@ -138,6 +138,19 @@ class NaviBridge(context: Context) {
         runCatching { navi.initialize({ naviReady = true; runCatching { navi.getTBTInfo(); navi.getDestinationInfo() }; if (resumeState == "unavailable" && hasPendingRoute()) resumeRoute() }, { Log.w(TAG, "navi init: ${it.message}") }); navi.addListener(listener) }.onFailure { Log.w(TAG, "navi: ${it.message}") }
         runCatching { fused.initialize() }.onFailure { Log.w(TAG, "fused init: ${it.message}") }
         registerFused(0)
+        handler.postDelayed(watchdog, 20_000)
+    }
+    // 위치 서비스가 재시작되면 등록한 콜백이 조용히 끊긴다. 20초 넘게 위치가 없으면 다시 붙는다.
+    private val watchdog = object : Runnable {
+        override fun run() { reconnectFusedIfStale(20_000); handler.postDelayed(this, 20_000) }
+    }
+    private fun reconnectFusedIfStale(maxAgeMs: Long) {
+        if (!fusedRegistered || System.currentTimeMillis() - locationAt <= maxAgeMs) return
+        Log.w(TAG, "fused: no location for ${maxAgeMs / 1000}s, reconnecting")
+        runCatching { fused.unregisterFusedLocationCallback(fusedL) }; runCatching { fused.release() }
+        fusedRegistered = false
+        runCatching { fused.initialize() }.onFailure { Log.w(TAG, "fused init: ${it.message}") }
+        registerFused(0)
     }
     fun stop() { handler.removeCallbacksAndMessages(null); runCatching { navi.removeListener(listener); navi.release() }; runCatching { fused.unregisterFusedLocationCallback(fusedL); fused.release() } }
     @Volatile private var located = false
@@ -160,7 +173,7 @@ class NaviBridge(context: Context) {
         return runCatching { navi.requestRoute(RouteInfo(lat, lng, null, null, name, "", "", "", RouteOption.RECOMMENDED, "", false)); lastDestination = JSONObject().put("lat", lat).put("lng", lng).put("name", name); true }
             .onFailure { Log.w(TAG, "requestDestination: ${it.message}") }.getOrDefault(false)
     }
-    fun requestLocation() { runCatching { fused.getLastKnownLocation(fusedL) } }
+    fun requestLocation() { reconnectFusedIfStale(15_000); runCatching { fused.getLastKnownLocation(fusedL) } }
 
     /** Sends the first-waypoint request. A true result means dispatched, not confirmed. */
     fun addWaypoint(ra: RestArea): Boolean {
