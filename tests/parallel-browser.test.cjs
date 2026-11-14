@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {chromium}=require('/Users/heka/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base='http://127.0.0.1:8897/app/src/main/assets/web/',out=path.join(__dirname,'../verification/parallel-v9');
 fs.mkdirSync(out,{recursive:true});
 const caps=Object.fromEntries([['seatRecline',0,100,1,'DRIVER'],['blind',0,10,1,'FRONT'],['hvacPower',0,1,1,'CABIN'],['temperature',18,26,.5,'CABIN'],['fan',1,3,1,'CABIN'],['seatVentilation',0,3,1,'DRIVER'],['brightness',0,100,1,'CABIN']].map(([key,min,max,step,areaId])=>[key,{state:'supported',automatic:true,min,max,step,origin:0,areaId,requiresCabinConsent:areaId!=='DRIVER'}]));

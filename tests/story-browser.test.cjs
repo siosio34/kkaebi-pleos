@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const {pathToFileURL} = require('node:url');
-const {chromium} = require('/Users/heka/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {chromium} = require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const url = pathToFileURL(path.resolve(__dirname, '../app/src/main/assets/web/demo/story.html')).href;
 async function open(browser, {width = 603, height = 367, fontScale = 1, reduced = false} = {}) {
   const p = await browser.newPage({viewport: {width, height}, reducedMotion: reduced ? 'reduce' : 'no-preference'});
