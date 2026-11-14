@@ -24,8 +24,8 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 
 ## 시연 영상
 
-- [docs/kkaebi-journey-demo.mp4](docs/kkaebi-journey-demo.mp4) (2분 30초, 1080p, 음성 포함, [한국어 자막](docs/kkaebi-journey-demo.ko.srt))
-- 앱에 내장된 통합 여정 시연(`app/src/main/assets/web/demo/journey.html`)을 프레임 단위로 렌더한 것입니다. 경로, 대화, 운전자 응답, 하드웨어 진행 값은 작성한 시나리오이고 차량을 제어하지 않습니다. 목소리는 합성 음성이고, 차량은 대형 세단의 비례를 참고해 코드로 만든 모형입니다.
+- [docs/kkaebi-journey-demo.mp4](docs/kkaebi-journey-demo.mp4) (2분 30초, 1080p, 음성 포함)
+- 왼쪽은 앱에 내장된 통합 여정 시연(시나리오), 오른쪽은 같은 순서로 실제 앱을 조작한 Pleos Connect 에뮬레이터 녹화입니다. 목소리는 합성 음성입니다.
 
 ## 실행 방법
 
