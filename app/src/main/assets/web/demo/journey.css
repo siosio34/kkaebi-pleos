@@ -67,7 +67,7 @@ body[data-phase=rest] .heading{opacity:.55;transition:opacity 1.2s}
 .caption{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;column-gap:.9rem;min-height:3.5rem}
 .caption img{width:3.5rem;height:3.5rem;object-fit:contain;transition:opacity .3s}
 .caption[data-speaker=driver] img{opacity:.28}
-.caption[data-quiet=true] strong{visibility:hidden}
+.caption[data-quiet=true] strong,.caption[data-quiet=true] img{visibility:hidden}
 .caption strong{font-size:.82rem;font-weight:500;color:var(--mint);min-width:2.6rem}
 .caption[data-speaker=driver] strong{color:var(--soft)}
 .caption p{font-size:1.5rem;font-weight:500;line-height:1.35;letter-spacing:-.02em;text-wrap:balance;max-width:44rem}

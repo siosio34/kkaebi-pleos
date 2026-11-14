@@ -134,13 +134,13 @@
       });
     }
     const marker = labels.get('marker');
-    const km = scene.routeDistance(s.elapsed) * 1.2;
+    const km = scene.routeDistance(s.elapsed);
     const markerOn = s.elapsed >= 15 && s.elapsed < 53;
     marker.node.dataset.on = String(markerOn);
     if (markerOn) {
       text(marker.node.children[0], '전방 졸음쉼터 · 가상 경로');
       text(marker.node.children[1], km >= 0.1 ? km.toFixed(1) + ' km' : Math.max(0, Math.round(km * 100) * 10) + ' m');
-      text(marker.node.children[2], '경유지로 안내 중');
+      text(marker.node.children[2], s.elapsed < 17.4 ? '가장 가까운 쉼터' : '경유지로 안내 중');
     }
   }
 
@@ -149,10 +149,10 @@
     if (phase === 'prepare') return '수면 환경 준비 · ' + done + '/8 완료 · 모형값';
     if (phase === 'restore') return '이전 설정 복원 · ' + done + '/8 완료 · 모형값';
     if (phase === 'rest') return '휴식 중 · 기상 알람 예약됨';
-    if (phase === 'alarm') return s.elapsed < 99 ? '기상 알람 · 응답을 기다려요' : '기상 응답 확인';
-    if (phase === 'recover') return '복원 완료 · 몸 상태 확인';
-    if (speed > 0.5) return '주행 중 · 조작은 음성으로';
-    return phase === 'arrive' ? (s.elapsed < data.consentAt ? 'P단 · 0 km/h · 주변 확인' : '정차 확인 · 설정 적용 동의') : 'P단 · 0 km/h';
+    if (phase === 'alarm') return s.elapsed < 98.4 ? '알람 · 대답을 기다려요' : '대답 확인';
+    if (phase === 'recover') return '복원 완료 · P단 · 0 km/h';
+    if (speed > 0.5) return s.elapsed > 46.6 && s.elapsed < 49.2 ? '주행 중 · 창문 여는 중(모형)' : '주행 중 · 조작은 말로';
+    return 'P단 · 0 km/h';
   }
 
   function render() {
@@ -166,7 +166,10 @@
     document.body.dataset.speaking = String((playing || film) && !!s.cue);
     document.body.dataset.motion = String(motion);
 
-    const info = scene.update(s.elapsed, s.cabin.values, {still: !moving() && preview == null, phase});
+    // 주행 중 창문은 닫혀 있다가 운전자가 열어 달라고 한 뒤에 열린다(모형).
+    const values = Object.assign({}, s.cabin.values);
+    if (s.elapsed < data.consentAt) { const k = clamp((s.elapsed - 46.6) / 2.4, 0, 1); values.window = 0.45 * k * k * (3 - 2 * k); }
+    const info = scene.update(s.elapsed, values, {still: !moving() && preview == null, phase});
     const done = s.cabin.rows.filter(row => row.groupId !== 'support' && row.state === 'complete').length;
     text('#status', statusLine(s, done, info.speed));
     layoutLabels(s, playing || preview != null, phase === 'prepare' || phase === 'restore');
@@ -189,8 +192,8 @@
     const speaker = recent ? recent.speaker : '깨비';
     $('#caption').dataset.speaker = speaker === '운전자' ? 'driver' : 'kkaebi';
     text('#caption-speaker', speaker);
-    text('#caption-text', recent ? recent.text : isRest ? '편히 쉬세요. 알람에 맞춰 다시 부를게요.' : '');
-    $('#caption').dataset.quiet = String(!recent && !isRest);
+    text('#caption-text', recent ? recent.text : '');
+    $('#caption').dataset.quiet = String(!recent);
     const pose = isRest ? 'resting' : ['alarm', 'restore', 'recover'].includes(phase) ? 'recovery' : 'attentive';
     const path = '../../character/kkaebi-' + pose + '.webp';
     if ($('#companion').getAttribute('src') !== path) $('#companion').src = path;

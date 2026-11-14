@@ -55,6 +55,7 @@
     renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
+    renderer.localClippingEnabled = true;
     const NIGHT = new T.Color(0x060a13);
     const scene = new T.Scene();
     scene.background = NIGHT.clone();
@@ -71,7 +72,7 @@
     })();
 
     const mat = (color, o = {}) => new T.MeshStandardMaterial(Object.assign({color, roughness: 0.8, metalness: 0}, o));
-    const paint = new T.MeshPhysicalMaterial({color: 0x2f425c, roughness: 0.3, metalness: 0.7, clearcoat: 1, clearcoatRoughness: 0.12, side: T.DoubleSide});
+    const paint = new T.MeshPhysicalMaterial({color: 0x38475a, roughness: 0.26, metalness: 0.8, clearcoat: 1, clearcoatRoughness: 0.12, side: T.DoubleSide});
     const trim = mat(0x1a1f28, {roughness: 0.7});
     const carpet = mat(0x12151b, {roughness: 1});
     const fabric = mat(0x77716a, {roughness: 0.95});
@@ -181,26 +182,37 @@
       g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
       const m = new T.Mesh(g, material); m.castShadow = true; m.renderOrder = 2; return m;
     }
-    // [z, 반폭, 중심 높이, 반높이]
-    const body = loft([[-2.34, 0.5, 0.47, 0.1], [-2.28, 0.74, 0.47, 0.19], [-2.05, 0.87, 0.49, 0.26], [-1.5, 0.93, 0.52, 0.31], [-1.0, 0.945, 0.56, 0.36], [0, 0.95, 0.59, 0.39], [1.2, 0.945, 0.6, 0.4], [1.9, 0.9, 0.6, 0.38], [2.22, 0.8, 0.59, 0.31], [2.34, 0.56, 0.58, 0.2]], 4.2, paint);
+    // [z, 반폭, 중심 높이, 반높이]. 긴 보닛과 반듯한 어깨선, 수직에 가까운 앞면을 가진 대형 세단 비례.
+    const body = loft([[-2.52, 0.8, 0.5, 0.2], [-2.47, 0.9, 0.52, 0.29], [-2.2, 0.935, 0.54, 0.33], [-1.5, 0.945, 0.57, 0.37], [-1.0, 0.95, 0.59, 0.39], [0, 0.95, 0.6, 0.4], [1.3, 0.95, 0.6, 0.4], [2.0, 0.93, 0.6, 0.39], [2.4, 0.88, 0.59, 0.35], [2.5, 0.76, 0.58, 0.27]], 4.8, paint);
     car.add(body);
-    const canopyMat = new T.MeshPhysicalMaterial({color: 0x18222f, roughness: 0.06, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.78, depthWrite: false, side: T.DoubleSide});
-    const canopy = loft([[-1.22, 0.62, 0.9, 0.03], [-0.95, 0.76, 0.9, 0.2], [-0.4, 0.8, 0.9, 0.47], [0.3, 0.8, 0.9, 0.56], [1.0, 0.79, 0.9, 0.53], [1.6, 0.76, 0.9, 0.32], [2.02, 0.68, 0.9, 0.08]], 3.0, canopyMat);
+    const canopyMat = new T.MeshPhysicalMaterial({color: 0x121a25, roughness: 0.05, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.04, transparent: true, opacity: 0.88, depthWrite: false, side: T.DoubleSide});
+    const canopy = loft([[-1.2, 0.6, 0.92, 0.03], [-0.95, 0.76, 0.92, 0.2], [-0.35, 0.8, 0.92, 0.47], [0.3, 0.8, 0.92, 0.54], [1.1, 0.79, 0.92, 0.52], [1.6, 0.76, 0.92, 0.36], [1.95, 0.7, 0.92, 0.1]], 3.2, canopyMat);
     canopy.castShadow = false; canopy.renderOrder = 3; car.add(canopy);
+    // 지붕은 유리 덮개와 같은 곡면을 위쪽만 잘라 차체 색으로 덮는다.
+    const roofMat = paint.clone(); roofMat.clippingPlanes = [new T.Plane(new T.Vector3(0, 1, 0), -1.3)]; roofMat.side = T.FrontSide;
+    const roof = new T.Mesh(canopy.geometry, roofMat); roof.scale.set(1.006, 1.004, 1.004); roof.position.y = -0.003; roof.castShadow = true; roof.renderOrder = 4; car.add(roof);
+    const chrome = mat(0xc9d0d8, {roughness: 0.18, metalness: 1});
+    for (const x of [-0.955, 0.955]) { const strip = box(0.012, 0.014, 2.5, chrome); strip.position.set(x, 0.985, 0.35); strip.castShadow = false; car.add(strip); }
+    for (const x of [-1.0, 1.0]) { const mirror = rbox(0.1, 0.09, 0.17, 0.04, paint); mirror.position.set(x, 1.02, -0.78); car.add(mirror); }
+    const grilleCanvas = document.createElement('canvas'); grilleCanvas.width = 512; grilleCanvas.height = 128;
+    (function () { const c = grilleCanvas.getContext('2d'); c.fillStyle = '#07090c'; c.fillRect(0, 0, 512, 128); c.fillStyle = '#39424d'; for (let y = 8; y < 128; y += 12) for (let x = (y / 12 % 2) * 9; x < 512; x += 18) c.fillRect(x, y, 9, 4); })();
+    const grilleTexture = new T.CanvasTexture(grilleCanvas); grilleTexture.encoding = T.sRGBEncoding;
+    const grille = new T.Mesh(new T.PlaneGeometry(1.34, 0.3), new T.MeshStandardMaterial({map: grilleTexture, roughness: 0.4, metalness: 0.6})); grille.position.set(0, 0.47, -2.524); grille.rotation.y = Math.PI; car.add(grille);
     const floor = box(1.66, 0.06, 2.6, carpet); floor.position.set(0, 0.23, 0.27); car.add(floor);
     const headMat = new T.MeshBasicMaterial({color: 0xf4f7ff}), tailMat = new T.MeshBasicMaterial({color: 0x7a1010});
-    const headBar = new T.Mesh(new T.BoxGeometry(1.3, 0.035, 0.03), headMat); headBar.position.set(0, 0.6, -2.305); car.add(headBar);
-    const tailBar = new T.Mesh(new T.BoxGeometry(1.36, 0.035, 0.03), tailMat); tailBar.position.set(0, 0.74, 2.3); car.add(tailBar);
+    const headBar = new T.Mesh(new T.BoxGeometry(1.56, 0.022, 0.03), headMat); headBar.position.set(0, 0.675, -2.52); car.add(headBar);
+    for (const x of [-0.62, 0.62]) { const lamp2 = new T.Mesh(new T.BoxGeometry(0.2, 0.09, 0.02), headMat); lamp2.position.set(x, 0.5, -2.527); car.add(lamp2); }
+    const tailBar = new T.Mesh(new T.BoxGeometry(1.46, 0.028, 0.03), tailMat); tailBar.position.set(0, 0.79, 2.505); car.add(tailBar);
     const wheels = [];
     const archMat = new T.MeshBasicMaterial({color: 0x04060a});
-    for (const x of [-0.84, 0.84]) for (const z of [-1.45, 1.4]) {
-      const w = new T.Group(); w.position.set(x, 0.34, z);
-      const tire = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, 0.26, 36), rubber); tire.rotation.z = Math.PI / 2; tire.castShadow = true;
-      const disc = new T.Mesh(new T.CylinderGeometry(0.215, 0.215, 0.27, 28), rim); disc.rotation.z = Math.PI / 2;
+    for (const x of [-0.85, 0.85]) for (const z of [-1.55, 1.36]) {
+      const w = new T.Group(); w.position.set(x, 0.345, z);
+      const tire = new T.Mesh(new T.CylinderGeometry(0.345, 0.345, 0.26, 40), rubber); tire.rotation.z = Math.PI / 2; tire.castShadow = true;
+      const disc = new T.Mesh(new T.CylinderGeometry(0.245, 0.245, 0.27, 32), rim); disc.rotation.z = Math.PI / 2;
       const hub = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 0.28, 12), rubber); hub.rotation.z = Math.PI / 2;
-      for (let k = 0; k < 5; k++) { const sp = new T.Mesh(new T.BoxGeometry(0.275, 0.2, 0.035), rubber); sp.rotation.x = k / 5 * Math.PI * 2; sp.position.set(0, Math.cos(k / 5 * Math.PI * 2) * 0.1, Math.sin(k / 5 * Math.PI * 2) * 0.1); w.add(sp); }
+      for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2, slot = new T.Mesh(new T.CylinderGeometry(0.045, 0.045, 0.275, 12), rubber); slot.rotation.z = Math.PI / 2; slot.position.set(0, Math.cos(a) * 0.15, Math.sin(a) * 0.15); w.add(slot); }
       w.add(tire, disc, hub); car.add(w); wheels.push(w);
-      const arch = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.2, 36), archMat); arch.rotation.z = Math.PI / 2; arch.position.set(x * 0.985, 0.34, z); car.add(arch);
+      const arch = new T.Mesh(new T.CylinderGeometry(0.405, 0.405, 0.2, 40), archMat); arch.rotation.z = Math.PI / 2; arch.position.set(x * 0.985, 0.345, z); car.add(arch);
     }
     const BELT = 0.97;
     const frontPane = [[-0.86, 0], [0.16, 0.015], [0.16, 0.4], [-0.34, 0.4]], rearPane = [[0.24, 0.015], [1.3, 0.03], [1.02, 0.4], [0.24, 0.4]];
@@ -223,8 +235,9 @@
     })();
     const screenTexture = new T.CanvasTexture(screenCanvas); screenTexture.encoding = T.sRGBEncoding;
     const screenMat = new T.MeshBasicMaterial({map: screenTexture});
-    const display = new T.Mesh(new T.PlaneGeometry(0.66, 0.2), screenMat); display.position.set(0.08, 0.99, -0.66); display.rotation.x = -0.22; car.add(display);
-    const displayBack = rbox(0.7, 0.24, 0.03, 0.02, trim); displayBack.position.set(0.08, 0.99, -0.68); displayBack.rotation.x = -0.22; car.add(displayBack);
+    const display = new T.Mesh(new T.PlaneGeometry(0.44, 0.26), screenMat); display.position.set(0.02, 1.0, -0.655); display.rotation.x = -0.2; car.add(display);
+    const cluster = new T.Mesh(new T.PlaneGeometry(0.3, 0.085), screenMat); cluster.position.set(-0.4, 0.985, -0.7); cluster.rotation.x = -0.2; car.add(cluster);
+    const displayBack = rbox(0.47, 0.29, 0.025, 0.02, trim); displayBack.position.set(0.02, 1.0, -0.67); displayBack.rotation.x = -0.2; car.add(displayBack);
     const wheel = new T.Mesh(new T.TorusGeometry(0.175, 0.018, 10, 40), mat(0x0f1217, {roughness: 0.6})); wheel.position.set(-0.4, 0.94, -0.52); wheel.rotation.x = -0.42; car.add(wheel);
     car.add(rod([-0.4, 0.94, -0.52], [-0.4, 0.82, -0.78], 0.03, trim));
     const consoleBox = rbox(0.26, 0.26, 1.2, 0.06, trim); consoleBox.position.set(0, 0.39, 0.05); car.add(consoleBox);
@@ -272,10 +285,10 @@
     const hemi = new T.HemisphereLight(0x8fa8d0, 0x0a0d12, 0.5); scene.add(hemi);
     const moon = new T.DirectionalLight(0x9db7e6, 0.55); moon.position.set(-6, 10, 5); scene.add(moon);
     const cabin = new T.PointLight(0xffc98a, 1, 5.5, 1.6); cabin.position.set(0, 1.3, 0.15); car.add(cabin);
-    const screenGlow = new T.PointLight(mint, 0.5, 1.8, 2); screenGlow.position.set(0.08, 1.02, -0.5); car.add(screenGlow);
+    const screenGlow = new T.PointLight(mint, 0.5, 1.8, 2); screenGlow.position.set(0.02, 1.02, -0.5); car.add(screenGlow);
     const beams = [];
     for (const x of [-0.62, 0.62]) {
-      const s = new T.SpotLight(0xdfe9ff, 0, 60, 0.42, 0.7, 1.1); s.position.set(x, 0.66, -2.3); s.target.position.set(x * 1.4, 0, -22); car.add(s, s.target); beams.push(s);
+      const s = new T.SpotLight(0xdfe9ff, 0, 60, 0.42, 0.7, 1.1); s.position.set(x, 0.6, -2.5); s.target.position.set(x * 1.4, 0, -22); car.add(s, s.target); beams.push(s);
     }
     const cool = new T.Color(0xdfe7f5), warm = new T.Color(0xffb866), tmpColor = new T.Color();
 
@@ -309,7 +322,7 @@
       env.position.x = -park * 5.4;
       dashes.position.z = moved % DASH; posts.position.z = moved % POST;
       rest.position.z = -ahead;
-      for (const w of wheels) w.rotation.x = -moved / 0.34;
+      for (const w of wheels) w.rotation.x = -moved / 0.345;
 
       const phase = opts.phase || 'drive';
       const resting = smooth(76, 82, t) - smooth(97, 104, t);
@@ -332,7 +345,8 @@
 
       const reveal = smooth(60, 66, t) - smooth(128, 134, t);
       paint.transparent = reveal > 0.001; paint.opacity = lerp(1, 0.2, reveal); paint.depthWrite = reveal < 0.5; body.castShadow = reveal < 0.5;
-      canopyMat.opacity = lerp(0.78, 0.09, reveal);
+      canopyMat.opacity = lerp(0.88, 0.09, reveal);
+      roofMat.transparent = reveal > 0.001; roofMat.opacity = 1 - smooth(0, 0.6, reveal); roofMat.depthWrite = reveal < 0.3; roofMat.clearcoat = 1 - reveal; roofMat.envMapIntensity = 1 - reveal; roof.visible = reveal < 0.6; roof.castShadow = reveal < 0.3;
       tailMat.color.multiplyScalar(1 - reveal * 0.75);
 
       const seatValue = v.seat || 0;
@@ -359,7 +373,7 @@
       const route = smooth(ROUTE_FROM, ROUTE_FROM + 2.5, t) * (1 - smooth(46, 50, t));
       ribbonMat.opacity = route * 0.8;
       const reach = clamp(ahead - 6, 1, 130);
-      ribbon.scale.y = reach; ribbon.position.z = -2.6 - reach / 2; ribbon.visible = route > 0.01;
+      ribbon.scale.y = reach; ribbon.position.z = -2.8 - reach / 2; ribbon.visible = route > 0.01;
       const labelReach = Math.min(reach, 26); routeEnd.position.set(ahead < 60 ? env.position.x + 5.4 - 2.4 : 0, ahead < 60 ? 4.4 : 1.6, -2.6 - labelReach);
       markerMat.opacity = 0.9 * smooth(ROUTE_FROM, ROUTE_FROM + 2, t) * (1 - smooth(50, 54, t));
       marker.visible = markerMat.opacity > 0.01;

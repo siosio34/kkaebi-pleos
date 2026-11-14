@@ -10,7 +10,7 @@
 
 - 영상: [docs/kkaebi-journey-demo.mp4](docs/kkaebi-journey-demo.mp4) (2분 30초, 1080p, 음성 포함, [한국어 자막](docs/kkaebi-journey-demo.ko.srt))
 - 영상은 앱에 내장된 통합 여정 시연 화면(`app/src/main/assets/web/demo/journey.html`)을 프레임 단위로 렌더한 것입니다. 같은 화면이 Pleos Connect 에뮬레이터의 release APK에서 실행됩니다(아래 첫 번째 그림).
-- 경로, 대화, 운전자 응답, 하드웨어 진행 값은 작성한 시나리오이고 이 화면은 차량을 제어하지 않습니다. 실제 SDK 실행 결과는 [ANDROID-VALIDATION.md](ANDROID-VALIDATION.md)에 따로 적었습니다.
+- 경로, 대화, 운전자 응답, 하드웨어 진행 값은 작성한 시나리오이고 이 화면은 차량을 제어하지 않습니다. 목소리는 합성 음성이고, 차량은 대형 세단의 비례를 참고해 코드로 만든 모형입니다. 실제 SDK 실행 결과는 [ANDROID-VALIDATION.md](ANDROID-VALIDATION.md)에 따로 적었습니다.
 
 ![Pleos Connect 에뮬레이터에서 실행한 통합 여정 시연](docs/emulator-journey.png)
 
@@ -22,7 +22,7 @@
 
 ## 실행 방법
 
-APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.11.0 (11), 패키지 `ai.kkaebi.app.contest`.
+APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.11.1 (12), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
 adb -s <기기 시리얼> install -r apk/kkaebi_release.apk
