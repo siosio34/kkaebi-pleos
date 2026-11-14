@@ -55,6 +55,8 @@ adb shell pm grant ai.kkaebi.app.contest pleos.car.permission.NAVI_ROUTE_SEARCH
 adb shell pm grant ai.kkaebi.app.contest android.permission.POST_NOTIFICATIONS
 adb shell appops set ai.kkaebi.app.contest SCHEDULE_EXACT_ALARM allow
 adb emu geo fix 127.405 36.436   # 죽암 졸음쉼터 2km 앞
+# 원래 목적지 복귀를 보려면 먼저 내비 목적지를 넣는다(시연 준비용)
+adb shell "am start -n ai.kkaebi.app.contest/ai.kkaebi.app.MainActivity --es kkaebi_destination '37.5547,126.9706,Seoul'"
 ```
 
 - 앱은 화면 자산을 모두 내장하며 네트워크 없이 실행됩니다.
@@ -97,7 +99,7 @@ release 빌드에는 서명 키가 필요합니다. 키는 저장소에 넣지 �
 | 공조 전원, 실내 조명, 시트 등받이, 블라인드 | 차량이 요청 수락. 값 재조회는 이전 값 그대로 |
 | 온도, 풍량 | 실패. 에뮬레이터에서 공조가 실제로 켜지지 않아 PropertyNotAvailable |
 | 기상 뒤 복원 | 변경한 7개 항목 모두 원래 값 확인 |
-| 원래 경로 복귀 | 구현. 에뮬레이터에 목적지가 없어 "목적지 없음" 분기까지만 확인 |
+| 원래 경로 복귀 | 내비에 목적지를 둔 상태에서 경유지 추가("경유지 1개 포함")와 기상 뒤 복귀 확인 |
 | 주행 중 동행(음성), 주행 중 환기 | 구현. 음성 출력과 시트 통풍 확인. 에뮬레이터가 P단 고정이라 주행 상태는 미확인 |
 | 잘 때 듣는 소리 | 구현. 빗소리·물소리·파도·명상 음을 앱이 합성(외부 음원 없음). 설정에서 선택 확인 |
 | Gleo AI 호출 | 스키마와 Intent 처리 구현. 실제 발화 인식 미확인 |

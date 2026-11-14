@@ -820,6 +820,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // adb shell am start ... --es kkaebi_destination "37.5547,126.9706,서울역" : 시연 전에 내비 목적지를 설정한다.
+        intent.getStringExtra("kkaebi_destination")?.split(",")?.takeIf { it.size >= 3 }?.let { p ->
+            android.util.Log.i("Kkaebi", "destination intent parked=${gateway.parked()} naviReady=${drowsyNavi.naviReady}")
+            val lat = p[0].toDoubleOrNull(); val lng = p[1].toDoubleOrNull()
+            if (lat != null && lng != null) android.util.Log.i("Kkaebi", "destination request ${p[2]} sent=${drowsyNavi.requestDestination(lat, lng, p[2])}")
+        }
         receiveExternalIntent(intent)
         dispatchCommand()
     }

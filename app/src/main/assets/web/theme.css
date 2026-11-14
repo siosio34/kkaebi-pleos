@@ -13,7 +13,7 @@
 .drowsy-distance{display:block;font-size:3.6rem;font-weight:600;letter-spacing:-.03em;line-height:1.05;color:var(--primary);font-variant-numeric:tabular-nums}
 .drowsy-meta{margin:6px 0 0;font-size:.85rem;color:var(--muted)}
 .drowsy-way{margin:10px 0 0;font-size:.95rem}
-.drowsy-way[data-state=unconfirmed],.drowsy-way[data-state=unavailable]{color:var(--amber)}
+.drowsy-way[data-state=unavailable]{color:var(--amber)}
 .drowsy-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 8px}
 .drowsy-actions button{min-height:56px;padding:0 8px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;font-size:.95rem}
 .drowsy-comfort{display:flex;flex-wrap:wrap;gap:4px 14px;min-height:1.2em}
@@ -101,3 +101,6 @@ body[data-stage-labels=true] .countdown{display:none}
 .sound-kinds button:disabled{opacity:.4}
 
 .sound-kinds button{white-space:nowrap;font-size:.8rem;padding:0 2px}
+
+/* 설정 화면에서 라벨을 눌러 항목을 고를 수 있게 화면 위로 올린다. */
+#stage-labels{z-index:3}

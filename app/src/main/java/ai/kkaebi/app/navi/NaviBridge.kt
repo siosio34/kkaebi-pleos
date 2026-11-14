@@ -110,6 +110,8 @@ class NaviBridge(context: Context) {
                 if (same) { setResume("confirmed", "원래 목적지 경로 안내를 확인했어요"); clearRoute() }
                 else setResume("unconfirmed", "안내 목적지가 원래 목적지와 일치하지 않아요")
             }
+            if (destinationInfo.latitude.isFinite() && destinationInfo.longitude.isFinite() && (kotlin.math.abs(destinationInfo.latitude) > 0.0001 || kotlin.math.abs(destinationInfo.longitude) > 0.0001))
+                lastDestination = JSONObject().put("lat", destinationInfo.latitude).put("lng", destinationInfo.longitude).put("name", destinationInfo.name).put("address", destinationInfo.address).put("poiId", destinationInfo.poiId).put("poiSubId", destinationInfo.poiSubId).put("poiProvider", destinationInfo.poiProvider)
             // 경로가 없을 때 내비는 0,0과 빈 이름을 돌려준다. 그건 목적지가 아니다.
             if (captureDestination && destinationInfo.latitude.isFinite() && destinationInfo.longitude.isFinite() &&
                 (kotlin.math.abs(destinationInfo.latitude) > 0.0001 || kotlin.math.abs(destinationInfo.longitude) > 0.0001)) {
@@ -152,6 +154,12 @@ class NaviBridge(context: Context) {
         } else if (attempt < 10) handler.postDelayed({ registerFused(attempt + 1) }, 1000)
         else Log.w(TAG, "fused: not supported after $attempt attempts")
     }
+    /** 시연 준비용: 운전자가 내비에 목적지를 넣은 상황을 만든다. 정차 중에만 MainActivity가 호출한다. */
+    fun requestDestination(lat: Double, lng: Double, name: String): Boolean {
+        if (!naviReady) return false
+        return runCatching { navi.requestRoute(RouteInfo(lat, lng, null, null, name, "", "", "", RouteOption.RECOMMENDED, "", false)); lastDestination = JSONObject().put("lat", lat).put("lng", lng).put("name", name); true }
+            .onFailure { Log.w(TAG, "requestDestination: ${it.message}") }.getOrDefault(false)
+    }
     fun requestLocation() { runCatching { fused.getLastKnownLocation(fusedL) } }
 
     /** Sends the first-waypoint request. A true result means dispatched, not confirmed. */
@@ -173,9 +181,12 @@ class NaviBridge(context: Context) {
         .put("destination", resumeDestination ?: JSONObject.NULL)
         .put("message", resumeMessage)
     fun hasPendingRoute(): Boolean = routeRecord.optLong("at", 0L).let { it > 0 && System.currentTimeMillis()-it in 0..7_200_000 }
+    /** 내비가 알려 준 가장 최근의 유효한 목적지. 졸음모드 시작 때 원래 목적지로 기억한다. */
+    @Volatile private var lastDestination: JSONObject? = null
     fun rememberDrowsyRoute() {
         routeRecord = JSONObject().put("at", System.currentTimeMillis())
-        resumeDestination = null
+        lastDestination?.let { d -> for (k in listOf("lat", "lng", "name", "address", "poiId", "poiSubId", "poiProvider")) if (d.has(k)) routeRecord.put(k, d.get(k)) }
+        resumeDestination = lastDestination?.optString("name")?.takeIf { it.isNotBlank() }
         destination.value?.takeIf { it.isNotBlank() }?.let { routeRecord.put("name", it) }
         saveRoute(); captureDestination = true
         runCatching { navi.getDestinationInfo() }.onFailure { Log.w(TAG, "destination lookup: ${it.message}") }
