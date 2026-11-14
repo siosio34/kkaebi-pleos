@@ -1,0 +1,21 @@
+{
+  "packageName": "ai.kkaebi.app",
+  "appDescription": "Kkaebi helps a safely parked driver prepare a sleep preset and return to their previous cabin settings.",
+  "invokeWord": "깨비",
+  "version": "0.10.0",
+  "actionCalls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "PREPARE_SLEEP_MODE",
+        "description": "Open sleep preparation for the driver to review and confirm after parking safely.",
+        "component": "activity",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'self'; media-src 'self'">
+  <title>깨비 · 졸음부터 다시 출발까지</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="story.css">
+  <script defer src="../scene.js"></script>
+  <script defer src="tour.js"></script>
+  <script defer src="story-data.js"></script>
+  <script defer src="story.js"></script>
+</head>
+<body data-runtime="story">
+<div class="story-app">
+  <header class="story-header">
+    <a id="exit" class="story-exit" href="kkaebi://exit-demo" aria-label="깨비 앱으로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"></path></svg></a>
+    <strong class="story-brand">깨비</strong>
+    <span class="story-disclosure">통합 시나리오 · 모형 시연</span>
+    <a class="story-details" href="index.html">하드웨어 상세</a>
+  </header>
+  <nav class="story-chapters" aria-label="운전자 여정"><span>졸음</span><span>쉼터 안내</span><span>도착</span><span>수면</span><span>기상</span><span>다시 출발</span></nav>
+  <main class="story-workspace">
+    <section class="story-stage" aria-label="운전자 여정 모형">
+      <div id="route-scene" class="route-scene">
+        <svg class="route-map" viewBox="0 0 360 230" role="img" aria-label="전방 쉼터까지 이어지는 가상 경로">
+          <path class="road-secondary" d="M-20 71H390M104-20V250M-20 190H390"></path>
+          <path class="road-bed" d="M-25 252 128 154Q155 137 155 105V-20"></path>
+          <path class="road-line" d="M-25 252 128 154Q155 137 155 105V-20"></path>
+          <path class="route-line" d="M30 216 128 154Q155 137 155 105V48H248"></path>
+          <path class="route-next" d="M238 40 248 48 238 56"></path>
+          <circle class="route-destination" cx="266" cy="48" r="15"></circle>
+          <path class="rest-symbol" d="M260 54V42h6a4 4 0 0 1 0 8h-6"></path>
+          <g id="route-driver" transform="translate(49 204)"><circle r="17"></circle><path d="m0-9 7 15-7-4-7 4Z"></path></g>
+        </svg>
+        <div class="route-place"><strong>전방 졸음쉼터</strong><span id="route-distance">1.2 km · 약 3분</span></div>
+        <span class="route-note">가상 경로 · 실제 위치 아님</span>
+      </div>
+      <div id="cabin-scene" class="cabin-scene" hidden>
+        <div id="cabin-state" class="cabin-state">저장한 수면 환경</div>
+        <div class="story-canvas-wrap"><canvas id="cabin-canvas" aria-label="시트와 블라인드, 조명과 공조의 상태 모형"></canvas></div>
+        <span class="cabin-note">모형값 · 창문 자동 동작은 시연 전용</span>
+      </div>
+      <img id="companion" class="story-companion" src="../../character/kkaebi-attentive.webp" width="80" height="80" alt="깨비">
+    </section>
+    <section class="story-content" aria-label="현재 여정 단계">
+      <div class="story-heading"><h1 id="story-title">졸음부터, 다시 출발까지</h1><p id="story-detail">깨비와 함께 안전한 곳에서 쉬어 가는 여정</p></div>
+      <div id="story-information" class="story-information">
+        <p id="story-message">운전자의 호출부터 쉼터 안내, 수면 준비와 기상까지 한 번에 이어집니다.</p>
+        <div id="story-facts" class="story-facts"></div>
+      </div>
+      <div id="story-hardware" class="story-hardware" hidden>
+        <p id="hardware-summary" class="hardware-summary">함께 준비하는 수면 환경</p>
+        <ol id="hardware-list" class="hardware-list" aria-label="각 하드웨어의 모의 진행 상태"></ol>
+      </div>
+      <div id="story-rest" class="story-rest" hidden><span>20분 휴식</span><strong id="rest-clock">20:00</strong><p>시간을 줄여 보여주는 시연</p></div>
+    </section>
+  </main>
+  <div id="story-caption" class="story-caption" aria-live="off"><strong id="caption-speaker">깨비</strong><p id="caption-text">졸리면, 쉬어 갈 수 있도록.</p><span id="voice-state" class="voice-state" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>
+  <div id="story-notice" class="story-notice" role="status" hidden></div>
+  <footer class="story-dock"><div class="story-progress"><span id="story-time">0:00 / 2:30</span><span class="story-time-track" aria-hidden="true"><span id="story-time-fill"></span></span><small>경로·대화·도착은 시나리오 / 차량 제어 없음</small></div><button id="story-restart">처음부터</button><button id="story-play" class="primary">통합 여정 시작</button></footer>
+  <p id="story-host" class="story-host">시연 환경 확인 중</p>
+</div>
+<audio id="story-audio" preload="auto"></audio>
+<div id="story-live" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

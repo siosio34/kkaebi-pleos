@@ -1,0 +1,8 @@
+{
+  "tool": "built-in image_gen",
+  "generatedAt": "2026-11-04",
+  "source": "exec-42e96368-98af-494d-a6c6-aede65929303.png",
+  "prompt": "Use case: stylized-concept. Asset type: transparent-background native Android Automotive companion character, single full-body pose. Create an original very cute, appealing animated-film 3D plush robot named Kkaebi, a small friendly Korean dokkaebi rest companion. Big round warm ivory head with short soft velvety fuzz, an inset dark midnight-blue rounded face panel with two large glossy friendly mint-white oval eyes, tiny subtle smile. Two short asymmetric dark navy curved horns make the silhouette distinctive, small sage-green scarf, pear-shaped small ivory plush body, stubby feet with navy soles, mitten hands. Welcoming attentive expression, right hand gently raised in greeting, seated upright, direct eye contact. Sophisticated charming toy-render with soft realistic fibers, dimensional soft studio light and rounded forms, like a premium animated family film character. Body proportions 60% head, childlike cute yet calm. Palette ivory, deep navy and muted sage. Full body centered on square 1024 composition, feet fully visible, 8% transparent margins, no ground plane, no cast shadow outside character. True transparent alpha background. Exactly one character. No text, logo, badges, props, panels, sparkles, scenery, UI, watermark. Not flat illustration, not gouache. Keep face warm and friendly, no exposed mechanics or threatening angles.",
+  "use": "Native Compose Kkaebi character",
+  "processing": "PNG to WebP, 640 × 640, quality 88; transparent alpha retained"
+}

@@ -1,0 +1,14 @@
+{
+  "status": "draft-not-registered",
+  "description": "Pleos Gleo 등록 검토용 연결 명세. 공식 App Schema 유효성 검사 및 Workspace 등록 전에는 호출 가능하다고 표시하지 않는다.",
+  "androidPackageDebug": "ai.kkaebi.app",
+  "androidPackageContest": "ai.kkaebi.app.contest",
+  "androidActivity": "ai.kkaebi.app.MainActivity",
+  "intentAction": "ai.kkaebi.app.action.PREPARE",
+  "commands": [
+    {"command": "drowsy-mode", "utteranceExamples": ["깨비 졸음모드 켜줘"], "effect": "졸음모드 준비 화면"},
+    {"command": "rest-mode", "utteranceExamples": ["깨비 휴식 준비해줘"], "effect": "휴식 설정 준비 화면"},
+    {"command": "quiet", "utteranceExamples": ["깨비 조용히 해줘"], "effect": "현재 음성 및 휴식 소리 중단; 예약 알람은 유지"}
+  ],
+  "constraints": ["차량 제어와 알람 예약은 별도 앱 내부 확인 필요", "정확한 공식 Gleo callback schema로 변환 및 등록 필요", "이 명세는 플랫폼 등록 완료를 뜻하지 않음"]
+}

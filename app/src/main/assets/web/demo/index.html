@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'self'">
+  <title>깨비 · 수면모드 시연</title>
+  <link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="demo.css">
+  <script defer src="../scene.js"></script><script defer src="tour.js"></script><script defer src="demo.js"></script>
+</head>
+<body data-runtime="showroom">
+<div class="app">
+  <header class="topbar">
+    <a class="exit-link" href="kkaebi://exit-demo" id="exit" aria-label="깨비 앱으로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"></path></svg></a>
+    <strong class="demo-brand">깨비</strong>
+    <span class="demo-disclosure">모형 시연 · 차량 제어 없음</span>
+    <button id="journey-toggle">전체 여정</button>
+    <button id="mode-toggle" class="text-button">상세·테스트</button>
+  </header>
+  <nav class="chapter-track" aria-label="시연 여정" hidden><span>계획</span><span>졸음</span><span>정차</span><span>환경</span><span>휴식</span><span>기상</span><span>확인</span></nav>
+  <main class="workspace">
+    <section class="cabin-stage" aria-label="가상 차량 공간">
+      <div class="demo-scene-label" id="model-label">여러 항목이 함께 준비돼요.</div>
+      <div class="scene-viewport"><canvas id="cabin-canvas" aria-label="독립적으로 움직이는 시트, 창문, 블라인드, 조명 모형"></canvas></div>
+      <div class="scene-footer"><span>위치·진행률은 모형값<small>창문 자동 동작은 시연 전용</small></span><img id="companion" src="../../character/kkaebi-attentive.webp" alt="깨비" width="64" height="64"></div>
+    </section>
+    <section class="control-panel" aria-label="수면 환경 준비 순서">
+      <div id="tour-panel">
+        <div class="routine-heading"><h1 id="tour-title">수면모드 시연</h1><p id="tour-description">시트 78% · 블라인드 100% · 22°C · 조명 8%</p><p class="demo-context" id="tour-context">알람 확인 예시 뒤, 독립된 항목을 함께 준비해요.</p></div>
+        <div id="routine-scroll" class="routine-scroll">
+          <div id="group-overview" class="group-overview" aria-label="세 그룹의 동시 진행"></div>
+          <ol id="routine-ledger" class="routine-ledger" aria-label="항목별 준비와 복원 진행"></ol>
+        </div>
+      </div>
+      <div id="manual-panel" hidden>
+        <h1>상세·동작 테스트</h1>
+        <p class="helper">항목 하나의 움직임을 살펴봐요. 수면 시연으로 돌아가면 처음 설정으로 준비해요.</p>
+        <div class="option-picker"><select id="options" aria-label="시연할 항목"></select></div>
+        <div class="inspector-head"><h2 id="manual-label">시트</h2><output id="manual-value"></output></div>
+        <input id="manual-range" class="range-control" type="range" min="0" max="100" value="0" aria-label="시트 모형 조절">
+        <div class="range-ends"><span id="range-min">세우기</span><span id="range-max">눕히기</span></div>
+        <p class="helper" id="manual-note">모형의 비율이며 실제 차량 각도가 아니에요.</p>
+      </div>
+      <div id="paused-notice" class="stop-warning" role="status" hidden></div>
+    </section>
+  </main>
+  <div class="action-dock"><span id="demo-progress">11개 항목 · 준비 전</span><div class="dock-actions"><button id="restart">처음 설정</button><button id="next" hidden>다음 단계</button><button id="play" class="primary">수면 환경 준비</button></div></div>
+  <div class="statusline"><span id="host-status">시연 환경 확인 중</span><span>음성·사운드·알람은 화면 예시</span></div>
+</div>
+<div id="live-notice" class="sr-only" aria-live="polite"></div>
+</body></html>

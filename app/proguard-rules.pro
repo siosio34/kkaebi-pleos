@@ -1,0 +1,12 @@
+-keep class ai.pleos.** { *; }
+-keep interface ai.pleos.** { *; }
+-keep class ai.umos.** { *; }
+-keep class com.google.gson.** { *; }
+-keep class ai.kkaebi.app.engine.** { *; }
+-keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod
+-dontwarn ai.pleos.**
+-dontwarn ai.umos.**
+-dontwarn android.car.**
+-dontwarn javax.annotation.**
+
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }

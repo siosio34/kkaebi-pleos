@@ -1,0 +1,8 @@
+{
+  "tool": "built-in image_gen",
+  "generatedAt": "2026-11-04",
+  "source": "exec-1af17836-08de-4b57-b41d-90e8b03d6a90.png",
+  "prompt": "Use case: identity-preserve. Edit this Kkaebi plush robot into its peaceful resting pose. Preserve the exact character identity, fur material, head size, asymmetric navy horns, ivory body, dark navy face panel, sage scarf, studio lighting, centered full-body front-facing seated composition and transparent background. Change ONLY the expression and arm pose: both mint-white eyes become two soft gently curved closed-eye lines, tiny relaxed smile, both mitten hands resting softly on lap, head tilted just 4 degrees to the character's left. Sleepy peaceful, adorable animated-film quality. No added props, no pillow, no Z letters, no decorative symbols. Keep entire horns and feet visible. True transparent alpha, no scenery or ground shadow.",
+  "use": "Native Compose Kkaebi character",
+  "processing": "PNG to WebP, 640 × 640, quality 88; transparent alpha retained"
+}

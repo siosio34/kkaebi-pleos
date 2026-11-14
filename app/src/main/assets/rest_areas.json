@@ -1,0 +1,82 @@
+[
+ {
+  "name": "죽암 졸음쉼터(서울)",
+  "lat": 36.455,
+  "lng": 127.413,
+  "road": "경부선",
+  "parking": 22,
+  "toilet": true
+ },
+ {
+  "name": "옥산 졸음쉼터(부산)",
+  "lat": 36.692,
+  "lng": 127.372,
+  "road": "경부선",
+  "parking": 18,
+  "toilet": true
+ },
+ {
+  "name": "신갈 졸음쉼터(부산)",
+  "lat": 37.268,
+  "lng": 127.102,
+  "road": "경부선",
+  "parking": 15,
+  "toilet": false
+ },
+ {
+  "name": "안성 졸음쉼터(서울)",
+  "lat": 37.035,
+  "lng": 127.165,
+  "road": "경부선",
+  "parking": 20,
+  "toilet": true
+ },
+ {
+  "name": "망향 졸음쉼터(부산)",
+  "lat": 36.887,
+  "lng": 127.191,
+  "road": "경부선",
+  "parking": 25,
+  "toilet": true
+ },
+ {
+  "name": "하남 졸음쉼터(하남)",
+  "lat": 37.479,
+  "lng": 127.233,
+  "road": "중부선",
+  "parking": 12,
+  "toilet": false
+ },
+ {
+  "name": "문막 졸음쉼터(강릉)",
+  "lat": 37.312,
+  "lng": 127.822,
+  "road": "영동선",
+  "parking": 16,
+  "toilet": true
+ },
+ {
+  "name": "덕평 졸음쉼터(인천)",
+  "lat": 37.262,
+  "lng": 127.423,
+  "road": "영동선",
+  "parking": 14,
+  "toilet": true
+ },
+ {
+  "name": "서울 톨게이트 졸음쉼터",
+  "lat": 37.395,
+  "lng": 127.098,
+  "road": "경부선",
+  "parking": 10,
+  "toilet": false
+ },
+ {
+  "name": "언양 졸음쉼터(서울)",
+  "lat": 35.6,
+  "lng": 129.11,
+  "road": "경부선",
+  "parking": 19,
+  "toilet": true
+ }
+]
