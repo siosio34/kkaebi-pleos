@@ -64,8 +64,11 @@ object DrowsyComfortPolicy {
         "window" -> value is Boolean
         else -> false
     }
-    /** A single request opens at most ten percentage points and never requests full opening. */
-    fun windowOpenTarget(before: Double, min: Double?, max: Double?): Double? =
-        if (before.isFinite() && min == 0.0 && max == 100.0 && before in 0.0..<90.0)
-            kotlin.math.min(90.0, before + 10.0) else null
+    /** A single request opens at most a tenth of the range and never requests full opening.
+     *  Only 0..100 (percent) and 0..10 (tenths, Pleos Connect emulator) ranges are trusted. */
+    fun windowOpenTarget(before: Double, min: Double?, max: Double?): Double? {
+        if (!before.isFinite() || min != 0.0 || (max != 100.0 && max != 10.0)) return null
+        val limit = max * 0.9
+        return if (before in 0.0..<limit) kotlin.math.min(limit, before + max / 10.0) else null
+    }
 }

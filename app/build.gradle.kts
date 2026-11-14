@@ -13,8 +13,8 @@ android {
         applicationId = "ai.kkaebi.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 17
-        versionName = "0.14.1"
+        versionCode = 18
+        versionName = "0.14.2"
     }
     buildTypes {
         release {

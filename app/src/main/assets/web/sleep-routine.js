@@ -28,7 +28,8 @@
   const source=info.controlOperation==='restore'&&actual.length?[]:plan;
   const result=source.map(row=>byKey.get(row.key)||{...row,state:row.eligible?'queued':row.state==='unsupported'?'unsupported':row.state==='unknown'?'unknown':['seatRecline','blind'].includes(row.key)&&!Number.isFinite(row.value)?'unsaved':row.selected?'invalid':'unselected',requested:row.key==='brightness'?10:row.value,planned:true});
   for(const row of actual)if(!result.some(x=>x.key===row.key))result.push(row);
-  for(const row of info.audioSteps||[])result.push({...row,operationId:'audio'});
+  // 음성·휴식 소리는 차량 제어가 아니므로, 완료를 확인하지 못해도 차량 '확인 필요'로 세지 않는다.
+  for(const row of info.audioSteps||[])if(!failed.has(row.state))result.push({...row,operationId:'audio'});
   if(!result.some(x=>x.key==='window'))result.push({key:'window',state:'manual',planned:true,message:'차량에서 직접 닫아 주세요.'});
   return result.sort((a,b)=>order.indexOf(a.key)-order.indexOf(b.key)).map(row=>({...row,label:labels[row.key]||'차량 설정'}));
  }

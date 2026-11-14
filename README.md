@@ -29,7 +29,9 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 
 ## 실행 방법
 
-APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.1 (17), 패키지 `ai.kkaebi.app.contest`.
+심사하실 때는 [JUDGE-GUIDE.md](JUDGE-GUIDE.md)의 순서를 따르면 10분 안에 전체 흐름을 볼 수 있습니다.
+
+APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.2 (18), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
 adb -s <기기 시리얼> install -r apk/조영제_깨비_release.apk
@@ -48,13 +50,8 @@ adb -s <기기 시리얼> shell am start -n ai.kkaebi.app.contest/ai.kkaebi.app.
 - 화면 규격: 2560 × 1440, 320 dpi, 가로
 - 수면 준비의 차량 제어는 기어 P, 속도 0에서만 동작합니다.
 - 처음 실행하면 위치, 마이크, 알림, 차량 속도 권한을 차례로 묻습니다. 모두 **허용**을 누르면 됩니다. 거절했다면 홈의 **권한 허용**으로 다시 요청할 수 있습니다. 정확한 알람은 설치할 때 자동으로 허용됩니다(`USE_EXACT_ALARM`).
-- 졸음쉼터 안내와 도착을 에뮬레이터에서 보려면 위치를 옮깁니다. 원래 목적지 복귀를 보려면 먼저 내비 목적지를 넣습니다.
-
-```sh
-adb emu geo fix 127.405 36.436   # 죽암 졸음쉼터 2km 앞
-adb emu geo fix 127.4131 36.4549 # 죽암 졸음쉼터 도착
-adb shell "am start -n ai.kkaebi.app.contest/ai.kkaebi.app.MainActivity --es kkaebi_destination '37.5547,126.9706,Seoul'"
-```
+- 차량 신호(기어·속도)는 공식 Pleos Connect Virtual Console(`adb forward tcp:8088 tcp:8088` → `http://127.0.0.1:8088/`)로 바꿉니다.
+- **심사용 단계별 안내는 [JUDGE-GUIDE.md](JUDGE-GUIDE.md)**에 있습니다. `judge/kkaebi-demo.sh`(macOS·Linux)와 `judge/kkaebi-demo.ps1`(Windows)이 설치, 출발 위치·원래 목적지 준비, 주행, 쉼터 도착, 재출발을 명령 한 줄씩으로 맞춰 줍니다.
 
 - 앱은 화면 자산을 모두 내장하며 네트워크 없이 실행됩니다.
 

@@ -183,7 +183,29 @@ class RestVehicleGateway(context: Context) {
         }.onFailure { speedKmh = null; speedAt = 0; observeSafety() }
         restricted = runCatching { ux?.currentCarUxRestrictions?.isRequiresDistractionOptimization ?: true }.getOrDefault(true)
         observeSafety()
+        reconnectIfSignalLost()
         if (refresh && parked() && System.currentTimeMillis() - capabilitiesAt > 60_000) refreshCapabilities()
+    }
+
+    // 차량 서비스가 다시 시작되면(에뮬레이터의 가상 콘솔 연결 등) 기존 연결로는 기어·속도가 더 오지 않는다.
+    // 기어 신호가 6초 넘게 끊기면 제어 중이 아닐 때 연결을 새로 맺는다.
+    private var signalLostSince = 0L
+    private var lastReconnectAt = 0L
+    private suspend fun reconnectIfSignalLost() {
+        val now = System.currentTimeMillis()
+        val fresh = gearAt > 0 && now - gearAt < 6_000
+        if (fresh) { signalLostSince = 0; return }
+        if (signalLostSince == 0L) { signalLostSince = now; return }
+        if (now - signalLostSince < 6_000 || now - lastReconnectAt < 15_000 || controlLock.isLocked || moving != null) return
+        lastReconnectAt = now; signalLostSince = 0
+        Log.w("KkaebiSignal", "vehicle signals lost, reconnecting")
+        runCatching { vehicle.getGear().unregisterGearSelection(gearListener) }
+        runCatching { vehicle.release() }
+        runCatching { properties?.unregisterCallback(speedListener) }
+        runCatching { ux?.unregisterListener() }
+        runCatching { androidCar?.disconnect() }
+        connected = false
+        start()
     }
 
     private fun setGear(value: VehicleGear?) {
@@ -285,6 +307,7 @@ class RestVehicleGateway(context: Context) {
         if (!parked()) return@withLock
         capabilitiesAt = System.currentTimeMillis()
         coroutineScope { (automaticKeys + manualKeys).map { key -> async { queryCapability(key) } }.awaitAll() }
+        excludeUnreadableHvac()
         val snapshot = controlCapabilities
         snapshot.keys().forEach { key -> Log.i("KkaebiCapabilities", "key=$key ${snapshot.getJSONObject(key)}") }
     }
@@ -330,18 +353,26 @@ class RestVehicleGateway(context: Context) {
             RestControlCapability(automatic = key in automaticKeys, checkedAt = System.currentTimeMillis(),
                 message = "지원 조회 미완료 · ${e.message?.take(140) ?: "권한 또는 차량 서비스 확인"}")
         }
-        val checked = hvacReadable(key, result)
+        val checked = if (hvacUnreadable && key in HVAC_KEYS && result.state == "supported") result.copy(state = "unsupported", message = HVAC_UNREADABLE) else result
         synchronized(stateLock) { capabilities = capabilities + (key to checked) }
         return checked
     }
 
     // 공조는 온도·풍량·전원이 한 묶음이다. 지원 조회는 통과해도 현재 온도를 읽지 못하는 차량에서는
     // 쓰기 결과를 확인할 길이 없으므로, 휴식 계획에 넣지 않고 처음부터 자동 적용 제외로 보여 준다.
-    private suspend fun hvacReadable(key: String, result: RestControlCapability): RestControlCapability {
-        if (key !in setOf("temperature", "fan", "hvacPower") || result.state != "supported") return result
-        val area = (if (key == "temperature") result.area else capabilities["temperature"]?.area ?: result.area) ?: return result
-        val readable = runCatching { getValue("temperature", area) }.isSuccess
-        return if (readable) result else result.copy(state = "unsupported", message = "이 차량에서 공조 현재 값을 읽을 수 없어 자동 적용에서 제외합니다")
+    @Volatile private var hvacUnreadable = false
+    private val HVAC_KEYS = setOf("temperature", "fan", "hvacPower")
+    private val HVAC_UNREADABLE = "이 차량에서 공조 현재 값을 읽을 수 없어 자동 적용에서 제외합니다"
+    private suspend fun excludeUnreadableHvac() {
+        hvacUnreadable = false
+        val temperature = capabilities["temperature"] ?: return
+        if (temperature.state != "supported") return
+        val area = temperature.area ?: return
+        if (runCatching { getValue("temperature", area) }.isSuccess) return
+        hvacUnreadable = true
+        synchronized(stateLock) {
+            capabilities = capabilities + HVAC_KEYS.mapNotNull { k -> capabilities[k]?.takeIf { it.state == "supported" }?.let { k to it.copy(state = "unsupported", message = HVAC_UNREADABLE) } }
+        }
     }
 
     private fun describe(area: SeatArea) = RestControlArea("seat", area.values.map { it.name }.sorted())

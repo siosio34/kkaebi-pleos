@@ -637,6 +637,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }, "KkaebiNative")
+        web.webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                if (m.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR)
+                    android.util.Log.e("KkaebiWebConsole", "${m.message()} @${m.sourceId()?.substringAfterLast('/')}:${m.lineNumber()}")
+                return true
+            }
+        }
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if(generation != webGeneration) return true

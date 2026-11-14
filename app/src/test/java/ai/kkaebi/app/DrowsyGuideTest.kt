@@ -111,5 +111,7 @@ class DrowsyGuideTest {
         assertEquals(90.0, DrowsyComfortPolicy.windowOpenTarget(85.0, 0.0, 100.0)!!, 0.01)
         assertNull(DrowsyComfortPolicy.windowOpenTarget(90.0, 0.0, 100.0))
         assertNull(DrowsyComfortPolicy.windowOpenTarget(0.0, 0.0, 255.0))
+        assertEquals(1.0, DrowsyComfortPolicy.windowOpenTarget(0.0, 0.0, 10.0)!!, 0.01)
+        assertNull(DrowsyComfortPolicy.windowOpenTarget(9.0, 0.0, 10.0))
     }
 }
