@@ -149,7 +149,7 @@
     }
     drawSign(); if (document.fonts && document.fonts.load) document.fonts.load('600 84px Pretendard').then(drawSign, () => {});
     const sign = new T.Mesh(new T.PlaneGeometry(1.9, 0.71), new T.MeshBasicMaterial({map: signTexture})); sign.position.set(-3.3, 2.5, -3.55); rest.add(sign);
-    rest.add(rod([-3.3, 0, -3.6], [-3.3, 2.2, -3.6], 0.045, poleMat));
+    const signPole = rod([-3.3, 0, -3.6], [-3.3, 2.2, -3.6], 0.045, poleMat); rest.add(signPole);
     const mint = 0x7fe3c8;
     const marker = new T.Group(); marker.position.set(-2.4, 0, 0.4); rest.add(marker);
     const markerMat = new T.MeshBasicMaterial({color: mint, transparent: true, opacity: 0.9});
@@ -375,6 +375,8 @@
       const reach = clamp(ahead - 6, 1, 130);
       ribbon.scale.y = reach; ribbon.position.z = -2.8 - reach / 2; ribbon.visible = route > 0.01;
       const labelReach = Math.min(reach, 26); routeEnd.position.set(ahead < 60 ? env.position.x + 5.4 - 2.4 : 0, ahead < 60 ? 4.4 : 1.6, -2.6 - labelReach);
+      // 주 화면(studio)의 고정 카메라에서는 표지판이 화면 모서리에 잘려 보이므로 감춘다.
+      sign.visible = signPole.visible = !studio;
       markerMat.opacity = studio ? 0 : 0.9 * smooth(ROUTE_FROM, ROUTE_FROM + 2, t) * (1 - smooth(50, 54, t));
       marker.visible = markerMat.opacity > 0.01;
 

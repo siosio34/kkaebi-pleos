@@ -55,7 +55,7 @@
 .stage-label,.stage-label:disabled{color:var(--ink)!important}
 .stage-label[data-on=true],.stage-label:disabled[data-on=true]{opacity:1!important}
 .stage-label[data-on=false]{opacity:0!important}
-body[data-stage-labels=true] .scene-copy{display:none}
+body[data-stage-labels=true]:not([data-routine=true]) .scene-copy{display:none}
 
 @media(max-height:420px){.drowsy-distance{font-size:2.3rem}.drowsy-name{font-size:.85rem}.drowsy-meta{margin-top:2px;font-size:.78rem}.drowsy-way{margin-top:4px;font-size:.82rem}.drowsy-guide{margin:0 0 6px}.drowsy-actions{margin-bottom:4px;gap:6px}.drowsy-actions button{min-height:48px;font-size:.82rem;line-height:1.2}.drowsy-comfort{font-size:.72rem;margin:0}.control-panel .text-button{min-height:40px}}
 
@@ -93,7 +93,7 @@ body[data-routine=true] .routine-note{display:none}
 body[data-routine=true] .routine-heading h1{font-size:1.7rem}
 body[data-routine=true] .routine-heading #routine-progress{font-size:1.25rem;font-weight:600}
 
-body[data-stage-labels=true] .countdown{display:none}
+body[data-stage-labels=true]:not([data-routine=true]) .countdown{display:none}
 
 .sound-kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0 4px}
 .sound-kinds button{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;font-size:.85rem}
@@ -104,3 +104,32 @@ body[data-stage-labels=true] .countdown{display:none}
 
 /* 설정 화면에서 라벨을 눌러 항목을 고를 수 있게 화면 위로 올린다. */
 #stage-labels{z-index:3}
+
+/* v0.14 다듬기: 한국어 줄바꿈, 말풍선, 비활성 탭, 패널 라벨 행 */
+body{word-break:keep-all;overflow-wrap:break-word}
+.action-dock{gap:14px}
+#dock-copy,.action-dock #dock-copy{flex:1 1 auto;max-width:none;font-size:.875rem;line-height:1.4;color:var(--ink)}
+#dock-copy>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-width:0}
+#dock-copy>span:has(button){display:block;overflow:visible}
+.dock-actions button{white-space:nowrap}
+@media(max-height:420px){.action-dock #dock-copy{font-size:.8rem}}
+.journey-nav button:disabled{background:none;border-color:transparent;color:var(--muted);opacity:.5}
+.tools .icon-button:disabled{background:none;border-color:transparent;opacity:.4}
+.tools .icon-button[aria-pressed=true]{background:rgba(127,227,200,.14);color:var(--primary);border-color:transparent}
+.drowsy-actions button{white-space:nowrap;padding:0 6px}
+.stage-label[data-side=left],.stage-label[data-side=right]{text-shadow:0 1px 3px rgba(6,10,19,.9)}
+.stage-label[data-side=row]{display:grid;grid-template-columns:6rem minmax(0,1fr) auto;align-items:center;column-gap:12px;text-align:left;border-bottom:1px solid var(--line)}
+.stage-label[data-side=row] b{font-size:.8rem}
+.stage-label[data-side=row] strong{font-size:1rem;overflow:hidden;text-overflow:ellipsis}
+.stage-label[data-side=row] em{font-size:.75rem;min-height:0;text-align:right}
+.stage-label[data-side=row] .meter{position:absolute;left:0;right:0;bottom:-1px;margin:0}
+.routine-banner{flex-wrap:wrap;row-gap:4px}
+.routine-banner .route-line{display:flex;align-items:center;gap:6px;flex-basis:100%;color:var(--primary)}
+.routine-banner .route-line svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.stage-label[data-side=row][data-state=confirmed] .meter,.stage-label[data-side=row][data-state=idle] .meter{opacity:0}
+.stage-label[data-side=cell]{display:flex;align-items:center;gap:8px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+.stage-label[data-side=cell] b{flex:none;font-size:.72rem}
+.stage-label[data-side=cell] strong{min-width:0;font-size:.9rem;overflow:hidden;text-overflow:ellipsis}
+.stage-label[data-side=cell] em{display:none}
+.stage-label[data-side=cell] .meter{position:absolute;left:0;right:0;bottom:-1px;margin:0}
+.stage-label[data-side=cell][data-state=confirmed] .meter,.stage-label[data-side=cell][data-state=idle] .meter{opacity:0}

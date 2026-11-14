@@ -69,7 +69,11 @@ class NaviBridge(context: Context) {
                 runCatching { navi.getWaypointInfo() }
             if (info.cmdType == WaypointCmdType.REMOVE && info.index == removingIndex && removingWaypoint) {
                 removingWaypoint = false
-                routeRecord.remove("waypointLat"); routeRecord.remove("waypointLng"); saveRoute()
+                val name = routeRecord.optString("name")
+                if (name.isNotBlank() && info.routeStartInfo?.name == name) {
+                    setResume("confirmed", "쉼터 경유지를 빼고 원래 목적지로 안내해요"); clearRoute(); return
+                }
+                routeRecord.remove("waypointLat"); routeRecord.remove("waypointLng"); routeRecord.remove("waypointName"); saveRoute()
                 finishResume()
             }
         }
@@ -78,24 +82,30 @@ class NaviBridge(context: Context) {
                 checkingWaypoint = false
                 val lat = routeRecord.optDouble("waypointLat", Double.NaN)
                 val lng = routeRecord.optDouble("waypointLng", Double.NaN)
+                // 일부 내비는 경유지 좌표를 0,0으로 돌려준다. 좌표로 못 찾으면 넣을 때 쓴 쉼터 이름으로 찾는다.
+                val name = routeRecord.optString("waypointName")
                 val index = info.indexOfFirst { lat.isFinite() && lng.isFinite() && kotlin.math.abs(it.latitude-lat)<0.0001 && kotlin.math.abs(it.longitude-lng)<0.0001 }
+                    .takeIf { it >= 0 } ?: info.indexOfFirst { name.isNotBlank() && it.name == name }
                 if (index in 0..1) {
                     removingIndex = if (index == 0) WaypointIndex.FIRST else WaypointIndex.SECOND
                     removingWaypoint = true
                     runCatching { navi.removeWaypoint(removingIndex) }.onFailure { removingWaypoint = false; setResume("unconfirmed", "쉼터 경유지 제거 요청 실패: ${it.message}") }
                 } else if (index < 0) {
-                    routeRecord.remove("waypointLat"); routeRecord.remove("waypointLng"); saveRoute()
+                    routeRecord.remove("waypointLat"); routeRecord.remove("waypointLng"); routeRecord.remove("waypointName"); saveRoute()
                     finishResume()
                 } else setResume("unconfirmed", "쉼터 경유지 위치를 안전하게 지정할 수 없어요")
             }
             val target = pendingWaypoint ?: return
-            if (info.any { kotlin.math.abs(it.latitude - target.lat) < 0.0001 && kotlin.math.abs(it.longitude - target.lng) < 0.0001 }) {
+            if (info.any { (kotlin.math.abs(it.latitude - target.lat) < 0.0001 && kotlin.math.abs(it.longitude - target.lng) < 0.0001) || it.name == target.name }) {
                 onWaypointConfirmed?.invoke()
             }
         }
         override fun onCautionPointInfo(cautionPointList: List<CautionPoint>) {}
         override fun onDestinationInfo(destinationInfo: DestinationInfo) {
             destination.value = destinationInfo.name
+            // 경로를 다시 계산하는 동안 내비는 잠깐 0,0과 빈 이름을 돌려준다. 이때는 판단하지 않고 다음 응답을 기다린다.
+            val empty = destinationInfo.name.isBlank() && kotlin.math.abs(destinationInfo.latitude) < 0.0001 && kotlin.math.abs(destinationInfo.longitude) < 0.0001
+            if (empty && (checkingExistingDestination || awaitingRoute)) { handler.postDelayed({ runCatching { navi.getDestinationInfo() } }, 1500); return }
             if (checkingExistingDestination) {
                 checkingExistingDestination = false
                 val same = kotlin.math.abs(destinationInfo.latitude-routeRecord.optDouble("lat", Double.NaN)) < 0.0001 &&
@@ -124,7 +134,15 @@ class NaviBridge(context: Context) {
                 if (resumeState == "noDestination") resumeRoute()
             }
         }
-        override fun onRouteStarted(routeStartInfo: RouteStartInfo) { navigating = true; if (awaitingRoute) { routeStartedObserved = true; runCatching { navi.getDestinationInfo() } } }
+        override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
+            navigating = true
+            val name = routeRecord.optString("name")
+            if ((awaitingRoute || checkingExistingDestination || resumeState == "requested") && name.isNotBlank() && routeStartInfo.name == name) {
+                awaitingRoute = false; checkingExistingDestination = false
+                setResume("confirmed", "원래 목적지 경로 안내를 확인했어요"); clearRoute(); return
+            }
+            if (awaitingRoute) { routeStartedObserved = true; runCatching { navi.getDestinationInfo() } }
+        }
         override fun onRoutingCompleted() { runCatching { navi.getTBTInfo(); navi.getDestinationInfo() } }
         override fun onNavigationStatus(status: NavigationStatus) { navigating = status == NavigationStatus.ROUTE_DRIVE; if (awaitingRoute && navigating) { routeStartedObserved = true; runCatching { navi.getDestinationInfo() } } }
         override fun onError(errorCode: NaviErrorCode) { Log.w(TAG, "navi error $errorCode"); if (resumeState == "requested") setResume("unconfirmed", "내비 응답 오류: $errorCode") }
@@ -181,7 +199,7 @@ class NaviBridge(context: Context) {
         return runCatching {
             pendingWaypoint = ra
             navi.addWaypoint(RequestWaypointInfo(latitude = ra.lat, longitude = ra.lng, poiName = ra.name, waypointIndex = WaypointIndex.FIRST, poiId = "", address = ra.road, poiSubId = ""))
-            routeRecord.put("waypointLat", ra.lat).put("waypointLng", ra.lng); saveRoute()
+            routeRecord.put("waypointLat", ra.lat).put("waypointLng", ra.lng).put("waypointName", ra.name); saveRoute()
             true
         }.onFailure { pendingWaypoint = null; Log.w(TAG, "addWaypoint: ${it.message}") }.getOrDefault(false)
     }
@@ -216,7 +234,8 @@ class NaviBridge(context: Context) {
             checkingWaypoint = true
             runCatching { navi.getWaypointInfo() }.onFailure { checkingWaypoint = false; setResume("unconfirmed", "경유지 조회 실패: ${it.message}") }
         } else finishResume()
-        handler.postDelayed({ if (resumeState == "requested") setResume("unconfirmed", "내비 경로 변경 이벤트를 확인하지 못했어요") }, 12_000)
+        // 실제 내비는 경유지를 빼고 경로를 다시 계산하는 데 10초 넘게 걸리기도 한다.
+        handler.postDelayed({ if (resumeState == "requested") setResume("unconfirmed", "내비 경로 변경 이벤트를 확인하지 못했어요") }, 25_000)
     }
     private fun validDestination(): Boolean {
         val lat = routeRecord.optDouble("lat", Double.NaN); val lng = routeRecord.optDouble("lng", Double.NaN)

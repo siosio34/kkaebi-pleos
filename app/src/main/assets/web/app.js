@@ -6,7 +6,7 @@ let selectedOption='seatRecline',previewOverrides={},poseCaptureRequestedAt=0;
 const sceneTracker=CabinState.tracker();
 let nativeInfo={},screen='home',lastScreen='',panelMarkup='',operationIntent=null,sound=false,dialogue='',listening=false,seenEvents=new Set(),demoGear='P',demoSpeed=0,demoLost=false,demoAlarm=null,demoJobs=[],audioContext=null,noise=null,alarmTone=null,accentQueue=[],accentOperation='',accentSeen=new Set(),accentTimer=0,lastNotice='';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const paths={sound:'M9 5 5 8H2v8h3l4 3V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',journal:'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',settings:'M4 7h16M4 17h16M8 4v6M16 14v6',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',plus:'M12 5v14M5 12h14',minus:'M5 12h14',check:'m5 12 4 4L19 6',clock:'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',error:'M12 8v5M12 17h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',pending:'M12 3v3M21 12h-3M12 21v-3M3 12h3',temperature:'M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0ZM12 9v8',fan:'M12 12c-7-8-12-1-6 2 3 1 4-1 6-2Zm0 0c10-3 6-11 1-7-2 2-1 4-1 7Zm0 0c-3 10 6 10 5 4-1-3-3-3-5-4Z',brightness:'M12 3v2M3 12h2M19 12h2M12 19v2M5.6 5.6 7 7m10 10 1.4 1.4M17 7l1.4-1.4M5.6 18.4 7 17M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',seatVentilation:'M7 3v10a3 3 0 0 0 3 3h8v4M5 20h12M11 5v5m4-4v5',hvacPower:'M12 2v10M7 5a8 8 0 1 0 10 0',seatRecline:'M7 3 5 12a3 3 0 0 0 3 4h10v4M5 20h12M14 6l4 2-2 4',blind:'M4 4h16v14H4zM4 8h16M4 12h16M18 18v3',window:'M4 4h16v16H4zM4 12h16M15 7l-5 3',seatPosition:'M5 4v11h12M3 20h18m-3-3 3 3-3 3M6 17l-3 3 3 3',restore:'M4 10a8 8 0 1 1 2 9M4 4v6h6',stop:'M6 6h12v12H6z'};
+const paths={sound:'M9 5 5 8H2v8h3l4 3V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',journal:'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',settings:'M4 7h16M4 17h16M8 4v6M16 14v6',arrow:'m9 5 7 7-7 7',route:'M6 19V9a4 4 0 0 1 4-4h8m-3-3 3 3-3 3',back:'m15 5-7 7 7 7',plus:'M12 5v14M5 12h14',minus:'M5 12h14',check:'m5 12 4 4L19 6',clock:'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',error:'M12 8v5M12 17h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',pending:'M12 3v3M21 12h-3M12 21v-3M3 12h3',temperature:'M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0ZM12 9v8',fan:'M12 12c-7-8-12-1-6 2 3 1 4-1 6-2Zm0 0c10-3 6-11 1-7-2 2-1 4-1 7Zm0 0c-3 10 6 10 5 4-1-3-3-3-5-4Z',brightness:'M12 3v2M3 12h2M19 12h2M12 19v2M5.6 5.6 7 7m10 10 1.4 1.4M17 7l1.4-1.4M5.6 18.4 7 17M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',seatVentilation:'M7 3v10a3 3 0 0 0 3 3h8v4M5 20h12M11 5v5m4-4v5',hvacPower:'M12 2v10M7 5a8 8 0 1 0 10 0',seatRecline:'M7 3 5 12a3 3 0 0 0 3 4h10v4M5 20h12M14 6l4 2-2 4',blind:'M4 4h16v14H4zM4 8h16M4 12h16M18 18v3',window:'M4 4h16v16H4zM4 12h16M15 7l-5 3',seatPosition:'M5 4v11h12M3 20h18m-3-3 3 3-3 3M6 17l-3 3 3 3',restore:'M4 10a8 8 0 1 1 2 9M4 4v6h6',stop:'M6 6h12v12H6z'};
 function icon(name){return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name]||paths.settings}"></path></svg>`;}
 function btn(label,action,kind='',disabled=false){const parts=action.split(':');const aria=parts[0]==='adjust'?`aria-label="${labels[parts[1]]||'설정'} ${parts[2]==='-1'?'낮추기':'높이기'}"`:'';return `<button ${aria} data-action="${action}" class="${kind}" ${disabled?'disabled':''}>${label}</button>`;}
 function post(type,data={}){if(native)try{KkaebiNative.post(type,JSON.stringify(data));}catch{state.notice='기기 연결을 확인할 수 없어요. 알람 상태를 다시 확인해 주세요.';render();}}
@@ -67,7 +67,8 @@ let drowsyListenAfterSpeech=false,demoDrowsy={...IDLE_DROWSY},demoDrowsyTimer=0,
 const DROWSY_QUESTIONS=['오늘 얼마나 운전했어요?','도착하면 뭐부터 하고 싶어요?','지금 듣고 싶은 노래 있어요?','저녁은 뭐 드셨어요?','조금만 더 가면 돼요. 괜찮아요?'];
 const DROWSY_REPLIES=['그렇군요.','네, 알겠어요.','좋아요. 쉼터에서 푹 쉬어요.'];
 function drowsy(){return native?(nativeInfo.drowsy||IDLE_DROWSY):demoDrowsy;}
-function driving(){const g=state.signal?.gear;return !isParked()&&!!g&&g!=='P';}
+// 기어를 잠깐 읽지 못한(UNKNOWN) 순간은 주행으로 보지 않는다. 장면이 주행 화면으로 튀지 않게 한다.
+function driving(){const g=state.signal?.gear;return !isParked()&&['D','R','N'].includes(g);}
 function startDrowsy(){
  if(drowsy().active)return;
  drowsySpoken={};drowsyAwaiting=false;sound=true;
@@ -125,7 +126,7 @@ function journalView(){return `<div class="section-head"><h1>쉬어간 순간</h
 // 장면 위에 올릴 부품 라벨. 미리보기에서는 맞출 값, 준비·복원 중에는 차량에서 확인한 상태를 보여 준다.
 let presetRefreshedAt=0,profileVersion=(()=>{try{return Number(localStorage.getItem('kkaebi.profile'))||0;}catch{return 0;}})();
 function stageLabels(view){
- const running=busy()||['recovery','summary'].includes(view);
+ const running=busy()||['rest','recovery','summary'].includes(view);
  if(!isParked()||!(['settings','prepare'].includes(view)||running))return [];
  const rows=SleepRoutine.rows(nativeInfo,C.environmentPlan(state),routineBaselineId),by=k=>rows.find(r=>r.key===k);
  const group=r=>!r?'idle':SleepRoutine.working.has(r.state)?'working':SleepRoutine.confirmed.has(r.state)?'confirmed':SleepRoutine.failed.has(r.state)?'failed':'idle';
@@ -134,7 +135,7 @@ function stageLabels(view){
  const plain=(k,v)=>k==='seatRecline'?'눕히기':k==='blind'?'내리기':k==='window'?'닫기':k==='brightness'?(typeof v==='boolean'?v:v<=20)?'은은하게':'밝게':k==='hvacPower'?(v?'켜기':'끄기'):valueLabel(k,v);
  const val=r=>!r?'':quiet.has(r.state)?short[r.state]:r.state==='accepted'&&knownValue(r.target)?plain(r.key,r.target):knownValue(r.actual)?plain(r.key,r.actual):knownValue(r.requested)?plain(r.key,r.requested):knownValue(r.target)?plain(r.key,r.target):'';
  const restoring=nativeInfo.controlOperation==='restore'||['recovery','summary'].includes(view);const val0=val;
- const valR=r=>restoring&&r&&!r.planned&&!quiet.has(r.state)?(['seatRecline','blind','window'].includes(r.key)?'원래 위치로':knownValue(r.actual)?compactValue(r.key,r.actual):'원래대로'):val0(r);
+ const valR=r=>restoring&&r&&!r.planned&&!quiet.has(r.state)?(['seatRecline','blind','window'].includes(r.key)?'원래 위치로':r.key==='brightness'?'원래 밝기로':knownValue(r.actual)?compactValue(r.key,r.actual):'원래대로'):val0(r);
  const status=r=>!r||quiet.has(r.state)||r.planned?'':SleepRoutine.states[r.state]||'';
  const prog=r=>{if(!r||r.planned)return null;const m=SleepRoutine.meter(r);return m.kind==='confirmed'?1:m.kind==='position'?m.value:m.kind==='indeterminate'?-1:null;};
  const one=(key,anchor,name)=>{const r=by(key);return r?{key,anchor,name,value:valR(r)||'그대로',status:status(r),state:group(r),progress:prog(r),option:view==='settings'?key:'',selected:view==='settings'&&selectedOption===key}:null;};
@@ -191,10 +192,10 @@ function render(){
  renderDock(view,p&&!nativeInfo.motionStopUnconfirmed);const notice=state.notice||dialogue||'';if(notice&&notice!==lastNotice){$('#live-notice').textContent=notice;lastNotice=notice;}lastScreen=view;
  if(view==='seek'){const d=drowsy();$('#scene-title').textContent=d.state==='guiding'?'쉼터까지 같이 가요.':d.state==='arrived'?'도착했어요.':'졸리면 쉬었다 가요.';$('#scene-caption').innerHTML=driving()?'주행 중<small>조작은 말로 해 주세요</small>':'';}
 }
-function renderDock(view,p){let actions='',copy='차량 음성 비서 연결은 준비 중이에요.';const active=activeAlarm(),autoRestore=active&&typeof nativeInfo.restSession?.autoRestore==='boolean'?nativeInfo.restSession.autoRestore:state.autoRestore;
- if(view==='seek'){$('#dock-actions').innerHTML=drowsy().active&&drowsy().state==='guiding'?btn('그만하기','drowsy-stop',''):'';$('#dock-copy').textContent=dialogue||(driving()?'운전 중에는 말로 해 주세요. “바람 틀어 줘”, “창문 열어 줘”, “말 걸지 마”.':'');return;}
+function renderDock(view,p){if(view!==lastScreen&&['home','settings','planning'].includes(view))dialogue='';let actions='',copy='차량 음성 비서 연결은 준비 중이에요.';const active=activeAlarm(),autoRestore=active&&typeof nativeInfo.restSession?.autoRestore==='boolean'?nativeInfo.restSession.autoRestore:state.autoRestore;
+ if(view==='seek'){$('#dock-actions').innerHTML=drowsy().active&&drowsy().state==='guiding'?btn('그만하기','drowsy-stop',''):'';$('#dock-copy').innerHTML='<span>'+esc(dialogue||(driving()?'운전 중에는 말로 해 주세요. “바람 틀어 줘”, “창문 열어 줘”, “말 걸지 마”.':''))+'</span>';return;}
  if(view==='home'){actions=btn('졸음모드','drowsy-mode','urgent')+btn('수면모드 준비 '+icon('arrow'),'rest-mode','primary',!p||busy());copy=btn('출발 전 계획','planning','text-button',!p||busy());}
- else if(view==='prepare'){const rows=C.environmentPlan(state).filter(x=>x.eligible),missingMotion=state.environmentConsent&&rows.some(x=>['seatRecline','blind'].includes(x.key))&&!state.motionConsent,missingCabin=state.environmentConsent&&rows.some(x=>nativeInfo.controlCapabilities?.[x.key]?.requiresCabinConsent)&&!state.cabinConsent;const automatic=rows.length>0&&!nativeInfo.pendingRestore;actions=(automatic?btn('알람만 예약','timer-only','',!p||!state.confirmedPlace||!state.alarmReady||busy()):'')+btn(automatic?'수면 환경 준비':'알람만 예약','rest','primary',!p||!state.confirmedPlace||!state.alarmReady||busy()||automatic&&!state.environmentConsent||missingMotion||missingCabin);copy=nativeInfo.pendingRestore?'알람만 새로 예약해요. 이전 설정은 따로 복원해 주세요.':state.autoRestore?'일어났어요를 누르면, 정차 확인 후 자동 복원해요.':'자동 복원 꺼짐 · 휴식 후 직접 복원할 수 있어요.';if(automatic&&(!state.confirmedPlace||!state.environmentConsent||missingMotion||missingCabin))copy='본문을 내려 주차·환경 적용·주변 확인을 마쳐 주세요.';}
+ else if(view==='prepare'){const rows=C.environmentPlan(state).filter(x=>x.eligible),missingMotion=state.environmentConsent&&rows.some(x=>['seatRecline','blind'].includes(x.key))&&!state.motionConsent,missingCabin=state.environmentConsent&&rows.some(x=>nativeInfo.controlCapabilities?.[x.key]?.requiresCabinConsent)&&!state.cabinConsent;const automatic=rows.length>0&&!nativeInfo.pendingRestore;actions=(automatic?btn('알람만 예약','timer-only','',!p||!state.confirmedPlace||!state.alarmReady||busy()):'')+btn(automatic?'수면 환경 준비':'알람만 예약','rest','primary',!p||!state.confirmedPlace||!state.alarmReady||busy()||automatic&&!state.environmentConsent||missingMotion||missingCabin);copy=nativeInfo.pendingRestore?'알람만 새로 예약해요. 이전 설정은 따로 복원해 주세요.':state.autoRestore?'일어났어요를 누르면, 정차 확인 후 자동 복원해요.':'자동 복원 꺼짐 · 휴식 후 직접 복원할 수 있어요.';if(automatic&&(!state.confirmedPlace||!state.environmentConsent||missingMotion||missingCabin))copy='위 확인 항목에 체크하면 시작할 수 있어요.';}
  else if(view==='settings'){actions=btn('설정 완료','close-settings','primary',!p);copy='선호는 이 기기에 저장돼요. 적용 동의는 휴식마다 확인해요.';}
  else if(view==='planning'){actions=btn('이 계획으로 시작','start','primary',!p);copy='졸림이 느껴지면 예정된 시간까지 기다리지 마세요.';}
  else if(view==='rest'){actions=busy()?btn('설정 중지','stop-controls'):'';actions+=btn('알람만 끄기','ack-alarm')+btn(autoRestore?'일어났어요 · 자동 복원':'일어났어요 · 알람 중지','wake-rest','primary',!p);copy=native?'시스템 알람 예약됨 · 화면 밖에서도 유지':'브라우저 전경 시뮬레이션 · 화면을 열어 두세요.';}
@@ -205,13 +206,13 @@ function renderDock(view,p){let actions='',copy='차량 음성 비서 연결은 
  else if(view==='journal'){actions=btn('돌아가기','journal-close','primary');copy='이 기기에만 저장한 기록이에요.';}
  else {actions=active?btn('알람 중지','ack-alarm','primary'):btn('기기 상태 확인','sync-alarm','',false);if(view==='interrupted')actions+=btn('휴식 다시 준비','rest-mode','primary',!p||busy());copy='예약 확인 전에는 성공이나 남은 시간을 추정하지 않아요.';}
  if(nativeInfo.pendingRestore&&state.alarm.state==='idle'&&['home','interrupted','prepare'].includes(view)){const restore=btn('이전 설정 복원','restore-controls',view==='prepare'?'':'primary',!p||busy());actions=view==='prepare'?restore+actions:btn('알람만 준비','rest-mode','',!p||busy())+restore;copy=view==='prepare'?'새 알람은 이전 설정을 자동 복원하지 않아요.':'이전 설정 복원이 남아 있어요. 정차 후 직접 요청해 주세요.';}
- if(state.notice&&view!=='home')copy=esc(state.notice);else if(dialogue)copy=esc(dialogue);$('#dock-copy').innerHTML=copy;$('#dock-actions').innerHTML=actions;
+ if(state.notice&&view!=='home')copy=esc(state.notice);else if(dialogue)copy=esc(dialogue);$('#dock-copy').innerHTML='<span>'+copy+'</span>';$('#dock-actions').innerHTML=actions;
 }
 function updateTimeline(){
  const list=$('#timeline');if(!list)return;const alert=routineAlert(),stop=$('#stop-warning');stop.hidden=!alert;stop.className='stop-warning';stop.textContent=alert;$('.routine-context').dataset.alert=String(!!alert);document.body.dataset.routineAlert=String(!!alert);
- $('#routine-title').textContent=routineTitle();const alarm=state.alarm.state;$('#alarm-banner').innerHTML=icon('clock')+`<span>${alarm==='scheduled'?state.napMinutes+'분 알람 예약됨':alarm==='ringing'?'기상 알람이 울려요':alarm==='idle'?'알람 중지 확인':'알람 상태 확인 필요'}</span>`;
+ $('#routine-title').textContent=routineTitle();const alarm=state.alarm.state;$('#alarm-banner').innerHTML=icon('clock')+`<span>${alarm==='scheduled'?state.napMinutes+'분 알람 예약됨':alarm==='ringing'?'기상 알람이 울려요':alarm==='idle'?'알람 중지 확인':'알람 상태 확인 필요'}</span>`+(routeResumeLine()?`<span class="route-line">${icon('route')}${routeResumeLine()}</span>`:'');
  const plan=C.environmentPlan(state).map(row=>state.environmentConsent?row:{...row,selected:false,eligible:false});
- const rows=SleepRoutine.rows(nativeInfo,plan,routineBaselineId),summary=SleepRoutine.summary(rows),op=operation();
+ const rows=SleepRoutine.rows(nativeInfo,plan,routineBaselineId),summary=SleepRoutine.summary(rows.filter(x=>x.operationId!=='audio')),op=operation();
  const active=SleepRoutine.activeHardware(rows);$('#routine-progress').textContent=op.waiting?'차량 요청 확인 중':summary.total?`${summary.confirmed} / ${summary.total} 확인${active.length&&!alert?' · '+active.length+'개 진행 중':''}${summary.failed?' · '+summary.failed+'개 확인 필요':''}`:'현재 환경을 유지해요';
  updateGroups(list,rows,alert);
  const existing=new Map([...list.querySelectorAll('[data-step]')].map(el=>[el.dataset.step,el])),keys=new Set();

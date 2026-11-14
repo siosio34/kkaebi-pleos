@@ -807,7 +807,10 @@ class RestVehicleGateway(context: Context) {
         }
     }
 
-    private suspend fun getValue(key: String, area: RestControlArea): Double = withTimeout(2000) {
+    // 차량 서비스가 바쁠 때 첫 읽기가 늦을 수 있어 한 번 더 묻는다. 읽기는 차량을 움직이지 않으므로 반복해도 안전하다.
+    private suspend fun getValue(key: String, area: RestControlArea): Double = try { readValueOnce(key, area) }
+        catch (e: TimeoutCancellationException) { Log.w("KkaebiControl", "key=$key read timeout, retrying"); readValueOnce(key, area) }
+    private suspend fun readValueOnce(key: String, area: RestControlArea): Double = withTimeout(2500) {
         val targetSeat = if(area.kind == "seat") seatArea(area) else driver
         when (key) {
             "seatRecline" -> read<Int> { ok, fail -> vehicle.getSeat().getCurrentSeatBackrestAnglePosition(targetSeat, ok, fail) }.toDouble()
@@ -947,14 +950,20 @@ class RestVehicleGateway(context: Context) {
     }
     private suspend fun stopAndConfirm(key: String, area: RestControlArea, clearFault: Boolean = true) {
         var failure: Exception? = null
-        repeat(2) {
+        // STOP은 여러 번 보내도 안전하다. 부하가 걸린 차량 서비스가 늦게 답하는 경우를 위해 넉넉히 다시 묻는다.
+        repeat(4) {
             try {
-                withTimeout(700) { suspendCancellableCoroutine<Unit> { c ->
+                withTimeout(1200) { suspendCancellableCoroutine<Unit> { c ->
                     sendMove(key, area, MoveControl.STOP, { if(c.isActive) c.resume(Unit) }, { if(c.isActive) c.resumeWithException(it) })
                 } }
                 if(clearFault && unsettledMoves.get() == 0) markMotionStopUnknown(false)
                 return
-            } catch(e: Exception) { failure = e }
+            } catch(e: Exception) {
+                if (e is CancellationException && e !is TimeoutCancellationException) throw e
+                failure = e; Log.w("KkaebiMotion", "key=$key STOP attempt=$it failed: ${e.message}")
+                // 차량이 직전 이동 명령을 아직 돌려주는 중일 수 있으니 잠깐 기다렸다 다시 보낸다.
+                delay(300)
+            }
         }
         markMotionStopUnknown(true)
         throw IllegalStateException("이동 정지 응답을 확인하지 못했습니다", failure)

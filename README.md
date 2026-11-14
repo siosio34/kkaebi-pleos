@@ -20,7 +20,7 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 | 원래대로, 원래 가던 길로 | 홈 |
 | ![복원](docs/app/7-restored.png) | ![홈](docs/app/8-home.png) |
 
-에뮬레이터 위치를 경부선 죽암 졸음쉼터 2km 앞으로 두고 실행했습니다. 에뮬레이터 차량은 P단 고정이라 주행 화면은 없습니다.
+에뮬레이터 위치를 중부선 하남 졸음쉼터 1.8km 앞으로 두고, Pleos Connect Virtual Console로 기어와 속도를 바꿔 가며 실행했습니다.
 
 ## 시연 영상
 
@@ -31,7 +31,7 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 
 심사하실 때는 [JUDGE-GUIDE.md](JUDGE-GUIDE.md)의 순서를 따르면 10분 안에 전체 흐름을 볼 수 있습니다.
 
-APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.2 (18), 패키지 `ai.kkaebi.app.contest`.
+APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.6 (22), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
 adb -s <기기 시리얼> install -r apk/조영제_깨비_release.apk
