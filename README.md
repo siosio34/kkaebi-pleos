@@ -1,6 +1,6 @@
 # 깨비
 
-“졸려” 한마디에 검색 없이 가장 가까운 졸음쉼터로 안내하고 도착까지 말을 걸어 주며, 주차하면 차를 잠자리로 바꿔 재우고 깨워서 원래 가던 길로 이어 주는 Pleos Connect 차량용 앱입니다.
+운전 중 졸음이 올 때 “졸려” 한마디면, 깨비가 가장 가까운 졸음쉼터를 찾아 안내하고, 가는 동안 잠들지 않도록 계속 말을 걸어 주며, 도착하면 차를 잠들기 좋은 환경으로 바꾸고 알람을 맞춰 깨운 뒤 원래 가던 목적지로 다시 길을 잡아 주는 Pleos Connect 차량용 앱입니다.
 
 2026 현대자동차그룹 차량용 앱 개발 공모전 출품작입니다.
 
@@ -29,10 +29,10 @@ Pleos Connect 에뮬레이터에서 release APK를 실행해 찍은 화면입니
 
 ## 실행 방법
 
-APK는 [apk/kkaebi_release.apk](apk/kkaebi_release.apk)입니다. 버전 0.14.0 (16), 패키지 `ai.kkaebi.app.contest`.
+APK는 [apk/조영제_깨비_release.apk](apk/조영제_깨비_release.apk)입니다. 버전 0.14.0 (16), 패키지 `ai.kkaebi.app.contest`.
 
 ```sh
-adb -s <기기 시리얼> install -r apk/kkaebi_release.apk
+adb -s <기기 시리얼> install -r apk/조영제_깨비_release.apk
 adb -s <기기 시리얼> shell am start -n ai.kkaebi.app.contest/ai.kkaebi.app.MainActivity
 ```
 
@@ -44,7 +44,7 @@ adb -s <기기 시리얼> shell am start -n ai.kkaebi.app.contest/ai.kkaebi.app.
 
 ## 테스트 환경과 필요한 설정
 
-- Pleos Connect 에뮬레이터: 42dot Automotive 시스템 이미지, Android 14 (API 34), arm64-v8a, revision 1
+- Pleos Connect Emulator **v2.1.0** (Android 14, API 34, arm64-v8a, 빌드 `release_connect_v2.1.0`)
 - 화면 규격: 2560 × 1440, 320 dpi, 가로
 - 수면 준비의 차량 제어는 기어 P, 속도 0에서만 동작합니다.
 - 권한: 위치(`pleos.car.permission.FUSED_LOCATION`), 경로 탐색(`NAVI_ROUTE_SEARCH`), 알림, 정확한 알람. 에뮬레이터에서는 아래처럼 허용했습니다.
