@@ -1,5 +1,6 @@
 package ai.kkaebi.app.rest
 
+import ai.kkaebi.app.navi.DrowsyComfortPolicy
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.area.WindowArea
@@ -51,6 +52,7 @@ import kotlin.math.min
 
 /** Explicit rest-only allowlist. Motion requires position readback, bounded pulses and STOP. */
 class RestVehicleGateway(context: Context) {
+    data class DrowsyWriteResult(val state: String, val value: Double? = null, val original: Double? = null)
     private val vehicle = Vehicle(context.applicationContext)
     private val preferences = context.getSharedPreferences("rest-restore-journal", Context.MODE_PRIVATE)
     private val posePreferences = context.getSharedPreferences("rest-saved-pose", Context.MODE_PRIVATE)
@@ -202,6 +204,69 @@ class RestVehicleGateway(context: Context) {
     }
     fun parked() = foreground && !closed && connected && RestSafety.parked(gear, speedKmh, gearAt, speedAt, System.currentTimeMillis(), restricted)
     private fun requireParked() { operationSafety.requireSafe(parked()) }
+    /** Separate driving allowlist. Sleep preset methods still require P and their existing journal. */
+    suspend fun drowsyWrite(key: String, target: Double?, original: Double? = null, expectedCurrent: Double? = null): DrowsyWriteResult = controlLock.withLock {
+        if (key !in DrowsyComfortPolicy.keys) return@withLock DrowsyWriteResult("unsupported")
+        if (!foreground || closed || !connected) return@withLock DrowsyWriteResult("failed", original = original)
+        val capability = if (key == "window") windowDrowsyCapability() else queryCapability(key)
+        val area = capability.area ?: return@withLock DrowsyWriteResult("unsupported", original = original)
+        if (capability.state != "supported" || capability.access != "READ_WRITE") return@withLock DrowsyWriteResult("unsupported", original = original)
+        val before = try { if (key == "window") readWindow(area) else getValue(key, area) }
+            catch (_: Exception) { return@withLock DrowsyWriteResult("failed", original = original) }
+        if (!RestSafety.validCapabilityValue(before, capability.min, capability.max, capability.step, capability.origin))
+            return@withLock DrowsyWriteResult("unsupported", before, original)
+        if (expectedCurrent != null && abs(before - expectedCurrent) > 0.05)
+            return@withLock DrowsyWriteResult("failed", before, original)
+        val desired = if (key == "window" && target == null)
+            DrowsyComfortPolicy.windowOpenTarget(before, capability.min, capability.max)
+        else target
+        if (desired == null) return@withLock DrowsyWriteResult("unsupported", before, original)
+        val restoring = original != null && desired == original
+        val allowed = if (key == "window" || restoring) RestSafety.validCapabilityValue(desired, capability.min, capability.max, capability.step, capability.origin)
+            else RestSafety.canRequest(key, desired, capability, System.currentTimeMillis())
+        if (!allowed) return@withLock DrowsyWriteResult("unsupported", before, original)
+        val saved = original ?: before
+        try {
+            check(foreground && connected && !closed) { "차량 연결 또는 화면 상태 변경" }
+            if (key == "window") withTimeout(2000) { suspendCancellableCoroutine<Unit> { c ->
+                vehicle.getWindow().setWindowPosition(windowArea(area), desired.toInt(), { returnedArea, returned ->
+                    if (c.isActive) {
+                        if (returnedArea == windowArea(area) && returned == desired.toInt()) c.resume(Unit)
+                        else c.resumeWithException(IllegalStateException("창문 응답 불일치"))
+                    }
+                }, { if (c.isActive) c.resumeWithException(it) })
+            } } else setDrowsyValue(key, desired, area)
+            val actual = if (key == "window") readWindow(area) else getValue(key, area)
+            DrowsyWriteResult(if (abs(actual - desired) <= 0.05) "applied" else "failed", actual, saved)
+        } catch (_: Exception) {
+            val actual = runCatching { if (key == "window") readWindow(area) else getValue(key, area) }.getOrNull()
+            DrowsyWriteResult("failed", actual, saved)
+        }
+    }
+
+    private suspend fun windowDrowsyCapability(): RestControlCapability = try {
+        withTimeout(2000) {
+            read<RestControlCapability> { ok, fail -> vehicle.getWindow().checkWindowPositionCapabilities({ config, areas ->
+                val exact = WindowArea(WindowValue.ROW_1_LEFT)
+                val bounds = areas?.get(exact)
+                ok(RestSafety.capability(config?.accessType?.name ?: "UNKNOWN", bounds != null,
+                    bounds?.minValue?.toDouble(), bounds?.maxValue?.toDouble(), 1.0, 0.0, System.currentTimeMillis())
+                    .copy(area = if (bounds != null) describe(exact) else null))
+            }, fail) }
+        }
+    } catch (_: Exception) { RestControlCapability() }
+
+    private suspend fun readWindow(area: RestControlArea): Double = withTimeout(2000) {
+        read<Int> { ok, fail -> vehicle.getWindow().getCurrentWindowPosition(windowArea(area), ok, fail) }.toDouble()
+    }
+    private suspend fun setDrowsyValue(key: String, target: Double, area: RestControlArea) = withTimeout(2000) {
+        val seat = seatArea(area)
+        when (key) {
+            "fan" -> write<Int> { ok, fail -> vehicle.getHVAC().setHvacFanSpeed(seat, target.toInt(), ok, fail) }
+            "seatVentilation" -> write<Int> { ok, fail -> vehicle.getSeat().setHvacSeatVentilation(seat, target.toInt(), ok, fail) }
+            else -> error("주행 중 허용되지 않은 설정")
+        }
+    }
     private fun observeSafety() {
         val safe = parked()
         val interrupted = operationSafety.observe(safe)

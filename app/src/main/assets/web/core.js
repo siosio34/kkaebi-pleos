@@ -46,9 +46,12 @@ function command(text){const t=String(text||'').normalize('NFKC').replace(/[.,!?
  if(/^(깨비)?(알람|타이머)(그만|중지|취소|꺼줘|끄기|멈춰|멈춰줘)$/.test(t))return 'ack-alarm';
  if(/^(깨비)?(휴식|졸음모드)?(취소|그만|중지|조용히|말그만|대화그만|음성꺼줘)$/.test(t))return 'quiet';
  if(/안졸|졸리지않|안쉬|쉬지않|휴식하지않|졸음모드하지마|휴식하지마|괜찮/.test(t))return 'none';
- if(/^(깨비)?(졸음모드|졸음모드켜줘|졸려|졸려요|졸립니다|졸음운전모드)$/.test(t))return 'drowsy-mode';
+ if(/^(깨비야?)?(나)?(좀)?(졸음모드|졸음모드켜줘|졸려|졸려요|졸리다|졸립니다|졸음운전모드)$/.test(t))return 'drowsy-mode';
  if(/^(깨비)?(휴식|휴식모드|휴식준비|쉬자|쉬고싶어|쉬고싶어요)$/.test(t))return 'rest-mode';
- if(/^(깨비)?(환기|환기해줘|창문열어줘)$/.test(t))return 'ventilation';
+ if(/^(깨비야?)?(창문)(좀|조금)?(열어|열어줘|열어줄래)$/.test(t))return 'window-open';
+ if(/^(깨비야?)?(환기|환기해줘|바람|바람좀)?(틀어|틀어줘|세게|세게해줘|환기해줘|환기)$/.test(t))return 'ventilation';
+ if(/^(깨비야?)?(말걸지마|말시키지마|조용히해줘)$/.test(t))return 'talk-off';
+ if(/^(깨비야?)?(말걸어줘|말좀걸어줘|얘기하자)$/.test(t))return 'talk-on';
  return 'none';}
 // Native diagnostics stay intact; only allowlisted summaries reach the driver UI.
 function controlIssue(key,message){const text=String(message||'');

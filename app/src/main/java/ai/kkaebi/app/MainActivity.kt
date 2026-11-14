@@ -1,6 +1,12 @@
 package ai.kkaebi.app
 
 import ai.kkaebi.app.rest.RestVehicleGateway
+import ai.kkaebi.app.engine.RestArea
+import ai.kkaebi.app.navi.DrowsyGuide
+import ai.kkaebi.app.navi.DrowsyComfortPolicy
+import ai.kkaebi.app.navi.NaviBridge
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import ai.kkaebi.app.speech.Ears
 import ai.kkaebi.app.speech.Voice
 import ai.pleos.playground.navi.constants.NaviErrorCode
@@ -52,6 +58,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import org.json.JSONArray
 import java.util.UUID
@@ -71,6 +79,10 @@ class MainActivity : ComponentActivity() {
     private var heard: JSONObject? = null
     private var speechResult: JSONObject? = null
     private lateinit var gateway: RestVehicleGateway
+    private lateinit var drowsyGuide: DrowsyGuide
+    private lateinit var drowsyNavi: NaviBridge
+    private val drowsyLock = Mutex()
+    private var drowsyRestoring = false
     private lateinit var voice: Voice
     private lateinit var ears: Ears
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, _ ->
@@ -115,13 +127,26 @@ class MainActivity : ComponentActivity() {
         restSound = RestSoundPlayer(this)
         alarms.channels()
         gateway = RestVehicleGateway(this)
+        val areas: List<RestArea> = runCatching { Gson().fromJson<List<RestArea>>(
+            assets.open("rest_areas.json").bufferedReader().use { it.readText() },
+            object : TypeToken<List<RestArea>>() {}.type) }.getOrDefault(emptyList())
+        drowsyGuide = DrowsyGuide(areas)
+        drowsyNavi = NaviBridge(this).also { bridge ->
+            bridge.onLocation = { lat, lng, heading -> runOnUiThread {
+                val fresh = System.currentTimeMillis() - bridge.locationAt in 0..15_000
+                updateDrowsyLocation(if (fresh) lat else null, if (fresh) lng else null, if (fresh) heading else null)
+            } }
+            bridge.onWaypointConfirmed = { runOnUiThread { drowsyGuide.waypointConfirmed(); publish() } }
+            bridge.onRouteDistance = { meters -> runOnUiThread { drowsyGuide.routeDistance(meters); publish() } }
+            bridge.start()
+        }
         voice = Voice(this)
         ears = Ears(this)
         setupWeb()
         if(routine().optString("phase") == "waking") updateRoutine("failed", "앱이 다시 시작되어 자동 복원을 재실행하지 않았습니다 · 차량 설정을 확인해 주세요", attempted = true)
         else if(routine().optString("phase") == "preparing") updateRoutine("resting", "앱이 다시 시작되었습니다 · 환경 설정을 재적용하지 않았습니다")
         publish()
-        val missing = arrayOf("android.car.permission.CAR_SPEED", Manifest.permission.RECORD_AUDIO)
+        val missing = arrayOf("android.car.permission.CAR_SPEED", Manifest.permission.RECORD_AUDIO, "pleos.car.permission.FUSED_LOCATION", "pleos.car.permission.NAVI_ROUTE_SEARCH")
             .filter { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isEmpty()) { permissionReady = true } else ActivityCompat.requestPermissions(this, missing.toTypedArray(), 10)
     }
@@ -156,6 +181,16 @@ class MainActivity : ComponentActivity() {
         polling = scope.launch {
             while (isActive && active) {
                 gateway.poll()
+                drowsyGuide.tick()
+                if (drowsyGuide.snapshot.active && drowsyGuide.snapshot.restArea != null) {
+                    val fresh = System.currentTimeMillis() - drowsyNavi.locationAt in 0..15_000
+                    drowsyGuide.location(if (fresh) drowsyNavi.lat else null, if (fresh) drowsyNavi.lng else null,
+                        if (fresh) drowsyNavi.heading else null, gateway.parked())
+                }
+                if (drowsyGuide.snapshot.state == "arrived" && !drowsyRestoring) {
+                    drowsyRestoring = true
+                    scope.launch { drowsyLock.withLock { restoreDrowsyComfort() }; publish() }
+                }
                 foregroundSignalsChecked = true
                 dispatchCommand()
                 if (restSound.playing && (!gateway.parked() || alarms.snapshot().state != "scheduled")) restSound.stop("알람 또는 차량 상태로 휴식 소리를 멈췄습니다")
@@ -195,6 +230,7 @@ class MainActivity : ComponentActivity() {
         }
         if(::web.isInitialized) { web.removeJavascriptInterface("KkaebiNative"); web.destroy() }
         runCatching { navi?.removeListener(naviListener); navi?.release() }
+        if (::drowsyNavi.isInitialized) drowsyNavi.stop()
         super.onDestroy()
     }
 
@@ -203,7 +239,8 @@ class MainActivity : ComponentActivity() {
         if (demoMode) { publishDemoContext(); return }
         val controlState = gateway.controlOperationState
         val state = JSONObject()
-            .put("bridgeVersion", 9).put("restOrchestration", true)
+            .put("bridgeVersion", 10).put("restOrchestration", true)
+            .put("drowsy", drowsyJson())
             .put("demoAvailable", canOpenDemo())
             .put("lifecycleActive", active).put("systemAnimationsEnabled", ValueAnimator.areAnimatorsEnabled())
             .put("fontScale", resources.configuration.fontScale.toDouble())
@@ -251,12 +288,108 @@ class MainActivity : ComponentActivity() {
         runOnUiThread { if(generation == webGeneration && !demoMode && webReady && !isDestroyed) web.evaluateJavascript("window.kkaebiNativeState && window.kkaebiNativeState(${state});", null) }
     }
 
+    private fun drowsyJson(): JSONObject {
+        val s = drowsyGuide.snapshot
+        val area = s.restArea?.let { JSONObject().put("name", it.name).put("road", it.road)
+            .put("parking", it.parking).put("toilet", it.toilet) } ?: JSONObject.NULL
+        val comfort = JSONObject().apply { s.comfort.forEach { (key, c) -> put(key, JSONObject()
+            .put("state", c.state).put("value", c.value ?: JSONObject.NULL).put("original", c.original ?: JSONObject.NULL)) } }
+        return JSONObject().put("active", s.active).put("requestId", s.requestId).put("state", s.state)
+            .put("restArea", area).put("distanceM", s.distanceM ?: JSONObject.NULL)
+            .put("routeDistanceM", s.routeDistanceM ?: JSONObject.NULL).put("waypoint", s.waypoint)
+            .put("comfort", comfort).put("message", s.message)
+    }
+
+    private var drowsyWaypointRetries = 0
+    private fun updateDrowsyLocation(lat: Double?, lng: Double?, heading: Double?) {
+        if (!active || !drowsyGuide.snapshot.active) return
+        drowsyGuide.location(lat, lng, heading, gateway.parked())
+        val s = drowsyGuide.snapshot
+        if (s.restArea != null && s.waypoint == "unavailable" && drowsyWaypointRetries < 5 && drowsyNavi.naviReady) { drowsyWaypointRetries++; if (drowsyNavi.addWaypoint(s.restArea)) drowsyGuide.waypointRequested() }
+        if (s.restArea != null && s.waypoint == "none") {
+            if (drowsyNavi.addWaypoint(s.restArea)) drowsyGuide.waypointRequested()
+            else drowsyGuide.waypointUnavailable()
+        }
+        if (drowsyGuide.snapshot.state == "arrived" && !drowsyRestoring) {
+            drowsyRestoring = true
+            scope.launch { drowsyLock.withLock { restoreDrowsyComfort() }; publish() }
+        }
+        publish()
+    }
+
+    private suspend fun applyDrowsyComfort(data: JSONObject) {
+        drowsyGuide.command(data.optString("requestId"))
+        if (!drowsyGuide.snapshot.active || drowsyGuide.snapshot.state == "arrived") {
+            drowsyGuide.notice("주행 안내 중에만 환기를 조절할 수 있어요"); publish(); return
+        }
+        val allowed = setOf("requestId", "fan", "seatVentilation", "window")
+        val valid = data.keys().asSequence().all { it in allowed && (it == "requestId" || DrowsyComfortPolicy.allowed(it, data.opt(it))) }
+        if (!valid) { drowsyGuide.notice("허용되지 않은 환기 요청이에요"); publish(); return }
+        for (key in DrowsyGuide.keys) {
+            if (!data.has(key)) continue
+            val previous = drowsyGuide.snapshot.comfort.getValue(key)
+            if (key == "window" && data.getBoolean(key) && previous.original != null && previous.state != "restored") continue
+            val target = when (key) {
+                "fan" -> data.getInt(key).toDouble()
+                "seatVentilation" -> data.getInt(key).toDouble()
+                else -> if (data.getBoolean(key)) null else previous.original
+            }
+            if (key == "window" && data.getBoolean(key) == false && previous.original == null) {
+                drowsyGuide.comfort(key, "restored", null, null); continue
+            }
+            val result = gateway.drowsyWrite(key, target, previous.original,
+                if (key == "window" && target != null) previous.value else null)
+            drowsyGuide.comfort(key, if (key == "window" && target != null && result.state == "applied") "restored" else result.state,
+                result.value, result.original)
+            drowsyGuide.notice(when (result.state) {
+                "applied" -> "요청한 환기를 적용했어요"
+                "unsupported" -> "이 차량에서는 해당 환기를 조절할 수 없어요"
+                else -> "환기 적용을 확인하지 못했어요"
+            })
+            publish()
+        }
+    }
+
+    private suspend fun restoreDrowsyComfort(): Boolean {
+        var allRestored = true
+        for (key in listOf("window", "seatVentilation", "fan")) {
+            val previous = drowsyGuide.snapshot.comfort.getValue(key)
+            val original = previous.original ?: continue
+            if (previous.state == "restored") continue
+            val result = gateway.drowsyWrite(key, original, original, previous.value)
+            drowsyGuide.comfort(key, if (result.state == "applied") "restored" else "failed", result.value, original)
+            if (result.state != "applied") { allRestored = false; drowsyGuide.notice("일부 환기 설정을 되돌리지 못했어요 · 차량에서 확인해 주세요") }
+            publish()
+        }
+        return allRestored
+    }
+
     private fun onAction(type: String, data: JSONObject) {
             if (demoMode) return
             if (type.length > 32 || data.toString().length > 4096) return
             scope.launch {
                 if (!active || demoMode) return@launch
                 when (type) {
+                    "drowsyStart" -> drowsyLock.withLock {
+                        if (!restoreDrowsyComfort()) { publish(); return@withLock }
+                        drowsyRestoring = false
+                        drowsyNavi.clearGuide()
+                        drowsyWaypointRetries = 0
+                        drowsyGuide.start(data.optString("requestId"))
+                        publish()
+                        drowsyNavi.requestLocation()
+                        val fresh = System.currentTimeMillis() - drowsyNavi.locationAt in 0..15_000
+                        updateDrowsyLocation(if (fresh) drowsyNavi.lat else null,
+                            if (fresh) drowsyNavi.lng else null, if (fresh) drowsyNavi.heading else null)
+                    }
+                    "drowsyStop" -> drowsyLock.withLock {
+                        drowsyNavi.clearGuide()
+                        val restored = restoreDrowsyComfort()
+                        drowsyGuide.stop()
+                        if (!restored) drowsyGuide.notice("일부 환기 설정을 되돌리지 못했어요 · 차량에서 확인해 주세요")
+                        publish()
+                    }
+                    "drowsyComfort" -> drowsyLock.withLock { applyDrowsyComfort(data) }
                     "ready" -> { webReady = true; publish(); dispatchCommand() }
                     "openDemo" -> {
                         if (canOpenDemo()) {

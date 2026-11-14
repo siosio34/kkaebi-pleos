@@ -1,0 +1,69 @@
+/* v0.12 주 화면: 통합 여정 시연과 같은 밤 장면 위에 화면을 올린다. 기존 style.css의 구조는 유지하고 색과 장면 배치만 바꾼다. */
+:root{--shell:#060a13;--paper:rgba(255,255,255,.07);--ink:#eef2f7;--muted:#aeb9c8;--line:rgba(214,226,240,.18);--primary:#7fe3c8;--primary-ink:#06231d;--night:transparent;--amber:#f3bc78;--danger:#ffb4a2}
+::selection{background:var(--primary);color:var(--primary-ink)}
+.cabin-stage{background:none;border-radius:0;overflow:visible;isolation:auto}
+.scene-viewport{position:fixed!important;inset:0!important;z-index:-1}
+.app::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(6,10,19,0) 34%,rgba(6,10,19,.8) 60%,rgba(6,10,19,.93) 100%),linear-gradient(180deg,rgba(6,10,19,.72) 0,rgba(6,10,19,0) 20%,rgba(6,10,19,0) 72%,rgba(6,10,19,.9) 100%)}
+.scene-copy{left:0;top:6px}
+.scene-footer{left:0}
+.action-dock{border-top-color:var(--line)}
+@media(max-width:499px){.app::after{background:linear-gradient(180deg,rgba(6,10,19,.75) 0,rgba(6,10,19,.2) 22%,rgba(6,10,19,.86) 46%,rgba(6,10,19,.95) 100%)}}
+.drowsy-guide{margin:2px 0 14px}
+.drowsy-name{margin:0;font-size:.95rem;color:var(--muted)}
+.drowsy-distance{display:block;font-size:3.6rem;font-weight:600;letter-spacing:-.03em;line-height:1.05;color:var(--primary);font-variant-numeric:tabular-nums}
+.drowsy-meta{margin:6px 0 0;font-size:.85rem;color:var(--muted)}
+.drowsy-way{margin:10px 0 0;font-size:.95rem}
+.drowsy-way[data-state=unconfirmed],.drowsy-way[data-state=unavailable]{color:var(--amber)}
+.drowsy-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 8px}
+.drowsy-actions button{min-height:56px;padding:0 8px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;font-size:.95rem}
+.drowsy-comfort{display:flex;flex-wrap:wrap;gap:4px 14px;min-height:1.2em}
+@media(max-height:420px){.drowsy-distance{font-size:2.6rem}.drowsy-actions button{min-height:48px;font-size:.85rem}.drowsy-guide{margin-bottom:8px}}
+
+/* 부품 라벨 */
+#stage-labels{position:fixed;inset:0;z-index:0;pointer-events:none}
+#stage-labels svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#stage-labels line{stroke:rgba(214,226,240,.34);stroke-width:1}
+#stage-labels line[data-active=true]{stroke:var(--primary);stroke-opacity:.8}
+#stage-labels circle{fill:var(--ink)}
+#stage-labels circle[data-active=true]{fill:var(--primary)}
+.stage-label,.stage-label:disabled{background:none!important;border:0!important;box-shadow:none!important;min-height:0}
+.stage-label:disabled[data-on=true]{opacity:1}
+.stage-label{position:absolute;left:0;top:0;display:block;padding:0;color:var(--ink);text-align:left;font:inherit;opacity:0;transition:opacity .45s var(--ease);pointer-events:none}
+.stage-label[data-on=true]{opacity:1}
+.stage-label[data-side=right]{text-align:right}
+.stage-label[data-option]{pointer-events:auto;cursor:pointer;min-height:48px}
+.stage-label b{display:block;font-size:.72rem;font-weight:500;color:var(--muted)}
+.stage-label strong{display:block;font-size:1.15rem;font-weight:600;letter-spacing:-.02em;line-height:1.25;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stage-label em{display:block;font-style:normal;font-size:.7rem;color:var(--muted);min-height:1em}
+.stage-label[data-state=working] em{color:var(--primary)}
+.stage-label[data-state=failed] em,.stage-label[data-state=failed] strong{color:var(--amber)}
+.stage-label[data-selected=true] strong{color:var(--primary)}
+.stage-label[data-option]:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:8px}
+
+/* 장면 위 글자는 제목 한 줄만 남긴다. 깨비는 아래 말풍선 자리로 옮긴다. */
+.scene-copy p{display:none}
+.scene-copy h2{font-size:.95rem;font-weight:500;color:var(--muted)}
+.scene-footer{font-size:.72rem;color:var(--muted)}
+.scene-footer img{display:none}
+.control-panel h1{font-size:1.7rem;font-weight:600;letter-spacing:-.03em;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+.control-panel .lead{color:var(--muted);margin:0 0 14px}
+.home-summary{margin:14px 0 6px;font-size:.85rem;color:var(--muted)}
+#dock-copy{display:flex;align-items:center;gap:10px;min-height:44px}
+#dock-copy::before{content:"";flex:none;width:40px;height:40px;background:url(../character/kkaebi-attentive.webp) center/contain no-repeat}
+@media(max-height:420px){.control-panel h1{font-size:1.35rem}.stage-label strong{font-size:1rem}.stage-label b,.stage-label em{font-size:.66rem}#dock-copy::before{width:34px;height:34px}.scene-copy h2{font-size:.8rem}}
+@media(max-width:520px){#stage-labels{display:none}}
+.stage-label,.stage-label:disabled{color:var(--ink)!important}
+.stage-label[data-on=true],.stage-label:disabled[data-on=true]{opacity:1!important}
+.stage-label[data-on=false]{opacity:0!important}
+body[data-stage-labels=true] .scene-copy{display:none}
+
+@media(max-height:420px){.drowsy-distance{font-size:2.3rem}.drowsy-name{font-size:.85rem}.drowsy-meta{margin-top:2px;font-size:.78rem}.drowsy-way{margin-top:4px;font-size:.82rem}.drowsy-guide{margin:0 0 6px}.drowsy-actions{margin-bottom:4px;gap:6px}.drowsy-actions button{min-height:48px;font-size:.82rem;line-height:1.2}.drowsy-comfort{font-size:.72rem;margin:0}.control-panel .text-button{min-height:40px}}
+
+.cabin-stage .countdown{left:0;top:0;font-size:2.6rem;font-weight:400;color:var(--amber);letter-spacing:-.02em}
+body[data-stage-labels=true] .scene-footer{display:none}
+
+.control-panel p{text-wrap:pretty}
+.drowsy-distance small{font-size:.8rem;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:.5rem}
+.drowsy-way{font-size:1.05rem;font-weight:600;margin:6px 0 2px}
+.drowsy-arrived{font-size:1.05rem;margin:0 0 4px}.drowsy-arrived strong{color:var(--primary)}
+body[data-stage-labels=true] .sleep-ledger .routine-overview{display:none}

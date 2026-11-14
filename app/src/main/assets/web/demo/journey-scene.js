@@ -316,7 +316,7 @@
     function update(t, values, opts) {
       opts = opts || {};
       resize();
-      const still = !!opts.still, v = values || {};
+      const still = !!opts.still, v = values || {}, studio = opts.studio || null;
       const moved = distanceAt(t), park = smooth(47, 56.5, t) - smooth(GO_AT, 142, t);
       const ahead = STOP_DISTANCE - moved;
       env.position.x = -park * 5.4;
@@ -325,10 +325,10 @@
       for (const w of wheels) w.rotation.x = -moved / 0.345;
 
       const phase = opts.phase || 'drive';
-      const resting = smooth(76, 82, t) - smooth(97, 104, t);
+      const resting = studio ? studio.resting || 0 : smooth(76, 82, t) - smooth(97, 104, t);
       const driving = clamp(speedAt(t) / 20, 0, 1);
       const light = v.light == null ? 0.72 : v.light;
-      const sleepy = smooth(64, 72, t) - smooth(102, 110, t);
+      const sleepy = studio ? studio.warm || 0 : smooth(64, 72, t) - smooth(102, 110, t);
       tmpColor.copy(cool).lerp(warm, sleepy);
       cabin.color.copy(tmpColor); cabin.intensity = 0.22 + light * 1.5;
       for (const s of strips) s.material.color.copy(tmpColor).multiplyScalar(0.25 + light * 0.95);
@@ -343,7 +343,7 @@
       screenMat.color.setScalar(lerp(1, 0.18, resting)); screenGlow.intensity = lerp(0.5, 0.06, resting);
       renderer.toneMappingExposure = lerp(1.15, 0.92, resting);
 
-      const reveal = smooth(60, 66, t) - smooth(128, 134, t);
+      const reveal = studio ? studio.reveal || 0 : smooth(60, 66, t) - smooth(128, 134, t);
       paint.transparent = reveal > 0.001; paint.opacity = lerp(1, 0.2, reveal); paint.depthWrite = reveal < 0.5; body.castShadow = reveal < 0.5;
       canopyMat.opacity = lerp(0.88, 0.09, reveal);
       roofMat.transparent = reveal > 0.001; roofMat.opacity = 1 - smooth(0, 0.6, reveal); roofMat.depthWrite = reveal < 0.3; roofMat.clearcoat = 1 - reveal; roofMat.envMapIntensity = 1 - reveal; roof.visible = reveal < 0.6; roof.castShadow = reveal < 0.3;
@@ -370,16 +370,18 @@
         m.material.opacity = ventValue * 2.2 * (1 - u) * (still ? 0.6 : 1); m.visible = ventValue > 0.01;
       }
 
-      const route = smooth(ROUTE_FROM, ROUTE_FROM + 2.5, t) * (1 - smooth(46, 50, t));
+      const route = studio ? studio.route || 0 : smooth(ROUTE_FROM, ROUTE_FROM + 2.5, t) * (1 - smooth(46, 50, t));
       ribbonMat.opacity = route * 0.8;
       const reach = clamp(ahead - 6, 1, 130);
       ribbon.scale.y = reach; ribbon.position.z = -2.8 - reach / 2; ribbon.visible = route > 0.01;
       const labelReach = Math.min(reach, 26); routeEnd.position.set(ahead < 60 ? env.position.x + 5.4 - 2.4 : 0, ahead < 60 ? 4.4 : 1.6, -2.6 - labelReach);
-      markerMat.opacity = 0.9 * smooth(ROUTE_FROM, ROUTE_FROM + 2, t) * (1 - smooth(50, 54, t));
+      markerMat.opacity = studio ? 0 : 0.9 * smooth(ROUTE_FROM, ROUTE_FROM + 2, t) * (1 - smooth(50, 54, t));
       marker.visible = markerMat.opacity > 0.01;
 
-      const c = cameraAt(t, still);
+      const c = studio && studio.camera ? [0].concat(studio.camera) : cameraAt(t, still);
       camera.position.set(c[1], c[2], c[3]); camera.lookAt(c[4], c[5], c[6]);
+      // 화면 한쪽에 패널이 있을 때 차를 반대쪽으로 민다.
+      if (studio && studio.shift) camera.setViewOffset(width, height, width * studio.shift, 0, width, height); else if (camera.view) camera.clearViewOffset();
       renderer.render(scene, camera);
       return {phase, park, ahead, speed: speedAt(t)};
     }
